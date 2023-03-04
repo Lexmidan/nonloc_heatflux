@@ -45,11 +45,14 @@ def assemble(para, cache):
     
     
     x=para['x']
-    Z=para['InitZbarProfile']
+    #Z=para['InitZbarProfile']
     ne=para['InitneProfile']
-    Kn=para['InitKnProfile']
+    #Kn=para['InitKnProfile']
     scale=para['scaling']
-    k=(Z+0.24)/(Z*(Z+4.2))
+    k=para['conductivity']
+    Zscaled=para['ScaledZ']
+    nescaled=para['Scaledne']
+    Knscaled=para['ScaledKn']
     gradT=np.gradient(np.reshape(T, (numberOfNode)),x.values) #initially T had form of [[1],[2],[3]...] not [1,2,3]
     """
 #Parameters given by NN:
@@ -57,10 +60,8 @@ def assemble(para, cache):
         
     Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
     gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
-    Zscaled=(Z-scale['Z'].loc['mean'])/scale['Z'].loc['std']
-    nescaled=(ne-scale['n'].loc['mean'])/scale['n'].loc['std']
-    Knscaled=(Kn-scale['Kn'].loc['mean'])/scale['Kn'].loc['std']
-        
+    
+    '''
     
     #number of points in one domain / number of features (T, gradt, Z, n, kn, x)
     lng=int(para['NNmodel'].fcIn.in_features/6)  #TODO: find a neater way to find this num
@@ -98,13 +99,17 @@ def assemble(para, cache):
         params = pd.concat([params.iloc[0].to_frame().T.set_index(pd.Index([xind[0]-i-1])), params])
     for i in range(len(x)-xind[-1]-1):              
         params = pd.concat([params,params.iloc[0].to_frame().T.set_index(pd.Index([xind[-1]+i+1]))])
-    alphas=params['alpha']
-    betas=params['beta']
+    # alphas=params['alpha']
+    # betas=params['beta']
+    '''
+    
+    alphas=np.full(len(x), 1)
+    betas=np.full(len(x), 0)
+    params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     #!!!!!
     '''    
 # Loop over grid
     '''
-    
     for i in range(0, numberOfNode):
         
         # BC node at x=0
@@ -134,19 +139,20 @@ def assemble(para, cache):
         # Interior nodes
         else:
             dx=x[i+1]-x[i]
-            temp1 =1+ (dt/dx**2)*(k[i] * alphas[i]*T[i-1]**betas[i-1])
-            temp2 = - (dt/dx**2)*(k[i]*alphas[i]+k[i+1]* alphas[i+1])\
+            temp1 =-(dt/dx**2)*(k[i] * alphas[i]*T[i-1]**betas[i-1])
+            temp2 =2/(3*ne[i])+ (dt/dx**2)*(k[i]*alphas[i]+k[i+1]* alphas[i+1])\
                        *T[i]**betas[i]
-            temp3 = (dt/dx**2)*(k[i+1] * alphas[i]*T[i+1]**betas[i+1])
+            temp3 =-(dt/dx**2)*(k[i+1] * alphas[i]*T[i+1]**betas[i+1])
             Jacobian[i][i+1] = temp3
             Jacobian[i][i-1] = temp1
         Jacobian[i][i] = temp2
     
     # Calculate F (right hand side vector)
-    gradq = utility.secondOrder(T, dx, Ug1, Ug2, alphas, betas, k) #d2T/dx2
+    gradq = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
     F = (2/(3*ne[i]))*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = -F; cache['Jacobian'] = Jacobian
+    cache['alphabetas']=params
     return cache
 
 
@@ -173,7 +179,7 @@ def initialize(para):
     TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
     cache = {'T':T,'T0':T0,'TProfile':TProfile,
              'F':F,'Jacobian':Jacobian,
-             'Log':pd.DataFrame()}
+             'Log':pd.DataFrame(), 'alphabetas':pd.DataFrame()}
     return cache
 
 

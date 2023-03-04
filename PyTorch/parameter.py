@@ -8,7 +8,6 @@ Modified on 18.02.23
 import postprocessing as pp
 import heatConduction as hc
 import pandas as pd
-import numpy as np
 import torch
 
 
@@ -43,12 +42,13 @@ def main():
     df.at['CPU'] = 1
     df.at['NNmodel']= torch.load('Model.pt')
     df.at['NNmodel'].eval()
+
     
     # Material
     df.at['material'] = 'steel'
     df.at['material function'] = 'constant'
     df.at['density'] = 7850
-    df.at['conductivity'] = 60.5
+    df.at['conductivity'] =(init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
     df.at['heatCapacity'] = 434
     
     # Grid
@@ -57,7 +57,7 @@ def main():
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 40#400
+    df.at['numberOfTimeStep'] = 10#400
     df.at['deltaTime'] = 0.2
     df.at['maxIteration'] = 20
     df.at['convergence'] = 1e-2#1E-10
@@ -71,6 +71,11 @@ def main():
     df.at['InitgradTeProfile'] = init_profile['gradTe']
     df.at['InitZbarProfile'] = init_profile['Zbar']
     df.at['InitKnProfile'] = init_profile['Kn']
+    
+    df.at['Scaledne'] = (init_profile['ne']-df.at['scaling']['n'].loc['mean'])/df.at['scaling']['n'].loc['std']
+    df.at['ScaledZ'] = (init_profile['Zbar']-df.at['scaling']['Z'].loc['mean'])/df.at['scaling']['Z'].loc['std']
+    df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
+
     
     
     # Boundary conditions
@@ -87,9 +92,9 @@ if __name__ == "__main__":
     results, cache = hc.solve(parameter)
     T = pp.preprocess(parameter, results)
     pp.evolutionField(T)
-    positions = np.linspace(parameter['x'][0], parameter['x'][-1], 10 )   #0-L  TODO: global variable?
+    positions = T.index[::int(len(init_profile['x'])*1e-2)]#np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
     pp.thermalCouplePlot(T, positions)
-    times = np.linspace(0, parameter['deltaTime']*parameter['numberOfTimeStep'] ,10)\
+    times = T.columns[::int(len(T.columns)/4)][1:4]
         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
     pp.temperatureDistribution(T, times)
     
