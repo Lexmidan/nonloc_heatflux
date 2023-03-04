@@ -36,7 +36,7 @@ def fixedGradient(q, k, dx, U1, i):
 
 
 
-def secondOrder(U, dx, Ug1, Ug2, alphas, betas, k):
+def secondOrder(U, Ug1, Ug2, alphas, betas, k):
     """ Calculate second order derivative
     
     Centered differencing approximation.
@@ -55,14 +55,13 @@ def secondOrder(U, dx, Ug1, Ug2, alphas, betas, k):
     d2U = np.zeros((U.size, 1))
     for i in range(0, U.size):
         if i==0:
-            d2U[i] = (k[i] * alphas[i]/betas[i])*(Ug1 - 2*U[i] + U[i+1]) / dx**2
+            d2U[i] = (k[i] * alphas[i]/(betas[i+1]+1))*(Ug1 - 2*U[i] + U[i+1])
         elif i==(U.size - 1):
-            d2U[i] = (k[i] * alphas[i]/betas[i])*(U[i-1] - 2*U[i] + Ug2) / dx**2
+            d2U[i] = (k[i] * alphas[i]/(betas[i]+1))*(U[i-1] - 2*U[i] + Ug2)
         else:
-            d2U[i] = ((k[i+1] * alphas[i+1]/betas[i+1])*\
-                (U[i+1]**(betas[i+1]+1)-U[i]**(betas[i]))-\
-                    (k[i] * alphas[i]/betas[i])*\
-                    (U[i]**(betas[i]+1)-U[i-1]**(betas[i-1])))/ dx**2
+            d2U[i] = (k[i+1] * alphas[i+1]/(betas[i+1]+1))*U[i+1]**(betas[i+1]+1)\
+                -(alphas[i]*k[i-1]/(betas[i-1]+1)+alphas[i+1]*k[i+1]/(betas[i+1]+1))*U[i]**(betas[i]+1)\
+                 +alphas[i-1]*k[i-1]/(betas[i-1]+1)*U[i-1]**(betas[i-1]+1)
     return d2U
 
 

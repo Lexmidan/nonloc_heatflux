@@ -13,7 +13,7 @@ import torch
 
 
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
-init_profile=pd.read_csv('C:/Users/aleks/Projects/ML-student-projects/PyTorch/init_profile.csv', index_col=(0))
+init_profile=pd.read_csv('init_profile.csv', index_col=(0))
 
 
 #####
@@ -41,7 +41,7 @@ def main():
     df.at['ODEsolver'] = 'NewtonIteration'
     df.at['linearSolver'] = 'numpy linalg'
     df.at['CPU'] = 1
-    df.at['NNmodel']= torch.load('C:/Users/aleks/Projects/ML-student-projects/PyTorch/Model.pt')
+    df.at['NNmodel']= torch.load('Model.pt')
     df.at['NNmodel'].eval()
     
     # Material
@@ -62,7 +62,7 @@ def main():
     df.at['maxIteration'] = 20
     df.at['convergence'] = 1e-2#1E-10
     df.at['relaxation'] = 1 # value in [0-1] Very sensitive!!!
-    df.at['scaling']=pd.read_csv('C:/Users/aleks/Projects/ML-student-projects/PyTorch/data_scaling.csv'\
+    df.at['scaling']=pd.read_csv('data_scaling.csv'\
                                  , index_col=(0))
     
     # Initial conditions

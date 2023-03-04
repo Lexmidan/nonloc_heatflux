@@ -43,7 +43,7 @@ def assemble(para, cache):
     T = cache['T']; T0 = cache['T0']        #let T=T[i,j] then T0=T[i, j-1]
     F = cache['F']; Jacobian = cache['Jacobian']
     
-    Kb=1.380649e-23 #Boltzmann
+    
     x=para['x']
     Z=para['InitZbarProfile']
     ne=para['InitneProfile']
@@ -93,13 +93,14 @@ def assemble(para, cache):
                 print(f"alpha and beta are calculated for {ind}/{len(x)-lng+1} points") 
     #Add alphas and betas at the beginning and end of intervals 
     #in order to all arrays have the same length
+    #!!!!!
     for i in range(xind[0]):              
         params = pd.concat([params.iloc[0].to_frame().T.set_index(pd.Index([xind[0]-i-1])), params])
     for i in range(len(x)-xind[-1]-1):              
         params = pd.concat([params,params.iloc[0].to_frame().T.set_index(pd.Index([xind[-1]+i+1]))])
     alphas=params['alpha']
     betas=params['beta']
-
+    #!!!!!
     '''    
 # Loop over grid
     '''
@@ -109,8 +110,8 @@ def assemble(para, cache):
         # BC node at x=0
         if i == 0:
             dx=x[i+1]-x[i]
-            temp2 = - ((k[i]*alphas[i]-k[i]* alphas[i+1])\
-                       *T[i]**alphas[i])/(dx**2)
+            temp2 = - (dt/dx**2)*((k[i]*alphas[i]+k[i+1]* alphas[i+1])\
+                       *T[i]**betas[i])
             if typeX0 == 'heatFlux':
                 Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
                 Jacobian[0][1] = temp2 * 2
@@ -121,8 +122,8 @@ def assemble(para, cache):
         # BC node at x=L
         elif i == numberOfNode-1:
             dx=x[i]-x[i-1]
-            temp2 = - ((k[i]*alphas[i]-k[i]* alphas[i])\
-                       *T[i]**alphas[i])/(dx**2)
+            temp2 = - (dt/dx**2)*((k[i]*alphas[i]+k[i]* alphas[i])\
+                       *T[i]**alphas[i])
             if typeXL == 'heatFlux':
                 Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
                 Jacobian[-1][-2] = temp2 * 2
@@ -133,17 +134,17 @@ def assemble(para, cache):
         # Interior nodes
         else:
             dx=x[i+1]-x[i]
-            temp1 = (k[i] * alphas[i]*T[i-1]**alphas[i-1])/(dx**2)
-            temp2 = - ((k[i]*alphas[i]-k[i]* alphas[i+1])\
-                       *T[i]**alphas[i])/(dx**2)
-            temp3 = (k[i+1] * alphas[i]*T[i+1]**alphas[i+1])/(dx**2)
+            temp1 =1+ (dt/dx**2)*(k[i] * alphas[i]*T[i-1]**betas[i-1])
+            temp2 = - (dt/dx**2)*(k[i]*alphas[i]+k[i+1]* alphas[i+1])\
+                       *T[i]**betas[i]
+            temp3 = (dt/dx**2)*(k[i+1] * alphas[i]*T[i+1]**betas[i+1])
             Jacobian[i][i+1] = temp3
             Jacobian[i][i-1] = temp1
         Jacobian[i][i] = temp2
     
     # Calculate F (right hand side vector)
     gradq = utility.secondOrder(T, dx, Ug1, Ug2, alphas, betas, k) #d2T/dx2
-    F = 1.5*ne[i]*Kb*(T - T0) - gradq*dt # Vectorization   dT/dt - a d2T/dx2=F/dt
+    F = (2/(3*ne[i]))*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = -F; cache['Jacobian'] = Jacobian
     return cache
