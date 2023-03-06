@@ -57,11 +57,15 @@ def assemble(para, cache):
     """
 #Parameters given by NN:
     """    
-        
+    
+    
+    
+    #NN part
+    '''  
     Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
     gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
     
-    '''
+
     
     #number of points in one domain / number of features (T, gradt, Z, n, kn, x)
     lng=int(para['NNmodel'].fcIn.in_features/6)  #TODO: find a neater way to find this num
@@ -102,57 +106,63 @@ def assemble(para, cache):
     # alphas=params['alpha']
     # betas=params['beta']
     '''
-    
+    #Constant alphabetas
+    #
     alphas=np.full(len(x), 1)
     betas=np.full(len(x), 0)
-    params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     #!!!!!
+    
+    
+    #interpolating in half steps (alpha_i+1/2=alpha[i])
+    #returns always a slitely bigger value
+    params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
+    alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas) 
+    betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     '''    
 # Loop over grid
     '''
+
     for i in range(0, numberOfNode):
         
         # BC node at x=0
         if i == 0:
             dx=x[i+1]-x[i]
-            temp2 = - (dt/dx**2)*((k[i]*alphas[i]+k[i+1]* alphas[i+1])\
-                       *T[i]**betas[i])
             if typeX0 == 'heatFlux':
                 Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
-                Jacobian[0][1] = temp2 * 2
+                Jacobian[0][1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
             elif typeX0 == 'fixedTemperature':
                 Ug1 = utility.fixedValue(valueX0, T[1])
                 Jacobian[0][1] = 0
-                
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(2*k[i]* alphas[i])\
+                            *T[i]**betas[i]
         # BC node at x=L
         elif i == numberOfNode-1:
             dx=x[i]-x[i-1]
-            temp2 = - (dt/dx**2)*((k[i]*alphas[i]+k[i]* alphas[i])\
-                       *T[i]**alphas[i])
             if typeXL == 'heatFlux':
                 Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
-                Jacobian[-1][-2] = temp2 * 2
+                Jacobian[-1][-2] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             elif typeXL == 'fixedTemperature':
                 Ug2 = utility.fixedValue(valueXL, T[-2])
                 Jacobian[-1][-2] = 0
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+                            *T[i]**betas[i]
                 
         # Interior nodes
-        else:
+        else:   #!!! alpha_i+1/2 := alpha[i]
             dx=x[i+1]-x[i]
-            temp1 =-(dt/dx**2)*(k[i] * alphas[i]*T[i-1]**betas[i-1])
-            temp2 =2/(3*ne[i])+ (dt/dx**2)*(k[i]*alphas[i]+k[i+1]* alphas[i+1])\
-                       *T[i]**betas[i]
-            temp3 =-(dt/dx**2)*(k[i+1] * alphas[i]*T[i+1]**betas[i+1])
-            Jacobian[i][i+1] = temp3
-            Jacobian[i][i-1] = temp1
-        Jacobian[i][i] = temp2
+            Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+            Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+                           *T[i]**betas[i]
     
     # Calculate F (right hand side vector)
     gradq = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    F = (2/(3*ne[i]))*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
+    F = (3/2*ne[i])*(T - T0)/dt - (1/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = -F; cache['Jacobian'] = Jacobian
-    cache['alphabetas']=params
+    cache['alpha']=alphas
+    cache['beta']=betas
+    #print('it num')
     return cache
 
 
@@ -173,13 +183,17 @@ def initialize(para):
     Tic = para['InitTeProfile']
     T = np.reshape(Tic.values, (numberOfNode,1)) #numberOfNode rows with Tic values
     T0 = np.reshape(Tic.values, (numberOfNode,1))
+    alpha = np.ones((numberOfNode, numOfTimeStep + 1))
+    beta = np.zeros((numberOfNode, numOfTimeStep + 1))
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
+    alpha_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
+    beta_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
     TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
-    cache = {'T':T,'T0':T0,'TProfile':TProfile,
+    cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha, 'beta':beta,
              'F':F,'Jacobian':Jacobian,
-             'Log':pd.DataFrame(), 'alphabetas':pd.DataFrame()}
+             'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof,  }
     return cache
 
 
@@ -200,7 +214,7 @@ def solveLinearSystem(para, cache):
     B = cache['F']
     dT = np.linalg.solve(A, B)
     T = cache['T']
-    T = dT * relax + T
+    T = -dT * relax + T
     cache['T']=T
     cache['dT'] = dT
     return cache
@@ -215,9 +229,15 @@ def storeUpdateResult(cache):
     
     timeStep = cache['ts']
     TProfile = cache['TProfile']
+    alpha_prof = cache['alpha_prof']     #all profiles of params
+    beta_prof = cache['beta_prof']       
+    alpha = cache['alpha']      #current profile
+    beta = cache['beta']
     T = cache['T']
     cache['T0'] = T.copy()
     TProfile[:,timeStep] = T.reshape(1,-1)
+    alpha_prof[:,timeStep] = alpha.reshape(1,-1)
+    beta_prof[:,timeStep] = beta.reshape(1,-1)
     return cache
 
 
@@ -281,14 +301,16 @@ def solve(para):
         cache = newtonIteration(para, cache)
         cache = storeUpdateResult(cache)
     TProfile = cache['TProfile']
+    alpha_prof = cache['alpha_prof']
+    betas_prof = cache['beta_prof']
     runtime = time.time() - start
     print('[Cost] CPU time spent','%.3f'%runtime,'s')
-    return TProfile, cache
+    return TProfile, cache, alpha_prof, betas_prof
 
 
 
 if __name__ == "__main__":
     para = parameter.main()
-    results, cache = solve(para)
+    results, cache, alphas, betas = solve(para)
     
 

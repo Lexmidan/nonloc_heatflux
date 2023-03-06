@@ -59,9 +59,15 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, k):
         elif i==(U.size - 1):
             d2U[i] = (k[i] * alphas[i]/(betas[i]+1))*(U[i-1] - 2*U[i] + Ug2)
         else:
-            d2U[i] = (k[i+1] * alphas[i+1]/(betas[i+1]+1))*U[i+1]**(betas[i+1]+1)\
+            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*U[i+1]**(betas[i]+1)-\
+                    ((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)+\
+                    (alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+            
+            """
+            (k[i+1] * alphas[i+1]/(betas[i+1]+1))*U[i+1]**(betas[i+1]+1)\
                 -(alphas[i]*k[i-1]/(betas[i-1]+1)+alphas[i+1]*k[i+1]/(betas[i+1]+1))*U[i]**(betas[i]+1)\
                  +alphas[i-1]*k[i-1]/(betas[i-1]+1)*U[i-1]**(betas[i-1]+1)
+            """
     return d2U
 
 

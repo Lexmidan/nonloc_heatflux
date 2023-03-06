@@ -83,21 +83,27 @@ def main():
     df.at['x=0 value'] = 0
     df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
     df.at['x=L value'] = 0  
+    
     return df
 
 
 
 if __name__ == "__main__":
     parameter = main()
-    results, cache = hc.solve(parameter)
+    results, cache, alphas, betas = hc.solve(parameter)
+    pd.DataFrame(results).to_csv('./result_data/T_profiles.csv')
+    #dropping because of unbeateaful init. of alphas and betas
+    pd.DataFrame(alphas).drop(0,axis=1).to_csv('./result_data/alphas_profiles.csv')
+    pd.DataFrame(betas).drop(0,axis=1).to_csv('./result_data/betas_profiles.csv')
+    pd.DataFrame(cache['Jacobian']).to_csv('./result_data/last_Jacobian.csv')
     T = pp.preprocess(parameter, results)
     pp.evolutionField(T)
-    positions = T.index[::int(len(init_profile['x'])*1e-2)]#np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
+    #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
+    positions = T.index[::int(len(init_profile['x'])*1e-2)]
     pp.thermalCouplePlot(T, positions)
     times = T.columns[::int(len(T.columns)/4)][1:4]
         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
     pp.temperatureDistribution(T, times)
-    
     
     
     
