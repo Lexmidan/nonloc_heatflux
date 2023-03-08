@@ -14,11 +14,10 @@ import torch
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
 init_profile=pd.read_csv('init_profile.csv', index_col=(0))
 
-
 #####
 init_profile=init_profile.iloc[::50,:]
 init_profile.reset_index(drop=True, inplace=True)
-#####
+#####00
 
 def main():
     """ Generate parameter
@@ -58,9 +57,9 @@ def main():
     
     # Solution
     df.at['numberOfTimeStep'] = 10#400
-    df.at['deltaTime'] = 0.2
-    df.at['maxIteration'] = 20
-    df.at['convergence'] = 1e-2#1E-10
+    df.at['deltaTime'] = 5e-2
+    df.at['maxIteration'] = 10
+    df.at['convergence'] = 1E-10
     df.at['relaxation'] = 1 # value in [0-1] Very sensitive!!!
     df.at['scaling']=pd.read_csv('data_scaling.csv'\
                                  , index_col=(0))
