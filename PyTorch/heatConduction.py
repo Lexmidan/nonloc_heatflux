@@ -109,7 +109,7 @@ def assemble(para, cache):
     #Constant alphabetas
     #
     alphas=np.full(len(x), 1e7)
-    betas=np.full(len(x), 0)
+    betas=np.full(len(x), 7/2)
     #!!!!!
     
     
@@ -129,35 +129,35 @@ def assemble(para, cache):
             dx=x[i+1]-x[i]
             if typeX0 == 'heatFlux':
                 Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
-                Jacobian[0][1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+                Jacobian[0][1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
             elif typeX0 == 'fixedTemperature':
                 Ug1 = utility.fixedValue(valueX0, T[1])
                 Jacobian[0][1] = 0
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(2*k[i]* alphas[i])\
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(2*k[i]* alphas[i])\
                             *T[i]**betas[i]
         # BC node at x=L
         elif i == numberOfNode-1:
             dx=x[i]-x[i-1]
             if typeXL == 'heatFlux':
                 Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
-                Jacobian[-1][-2] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+                Jacobian[-1][-2] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             elif typeXL == 'fixedTemperature':
                 Ug2 = utility.fixedValue(valueXL, T[-2])
                 Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
                             *T[i]**betas[i]
                 
         # Interior nodes
         else:   #!!! alpha_i+1/2 := alpha[i]
             dx=x[i+1]-x[i]
-            Jacobian[i][i+1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
-            Jacobian[i][i-1] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+            Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+            Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
                            *T[i]**betas[i]
     
     # Calculate F (right hand side vector)
-    gradq = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    F = (3/2*np.array([ne]).T)*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
+    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
+    F = (3/2*np.array([ne]).T)*(T - T0)/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = -F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
@@ -183,8 +183,8 @@ def initialize(para):
     Tic = para['InitTeProfile']
     T = np.reshape(Tic.values, (numberOfNode,1)) #numberOfNode rows with Tic values
     T0 = np.reshape(Tic.values, (numberOfNode,1))
-    alpha = np.ones((numberOfNode, numOfTimeStep + 1))
-    beta = np.zeros((numberOfNode, numOfTimeStep + 1))
+    alpha = np.ones((numberOfNode))
+    beta = np.zeros((numberOfNode))
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
     alpha_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
     beta_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
@@ -214,7 +214,7 @@ def solveLinearSystem(para, cache):
     B = cache['F']
     dT = np.linalg.solve(A, B)
     T = cache['T']
-    T = dT * relax + T      #T(j+1)=T(j)-J^(-1)*F
+    T = dT * relax + T      #T(j+1)=T(j)+J``(-F) :I have -F saved in cache as F
     cache['T']=T
     cache['dT'] = dT
     return cache

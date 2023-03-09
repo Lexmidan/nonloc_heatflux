@@ -17,6 +17,7 @@ init_profile=pd.read_csv('init_profile.csv', index_col=(0))
 #####
 init_profile=init_profile.iloc[::50,:]
 init_profile.reset_index(drop=True, inplace=True)
+#init_profile['ne']/=10e3
 #####00
 
 def main():
@@ -57,7 +58,7 @@ def main():
     
     # Solution
     df.at['numberOfTimeStep'] = 10#400
-    df.at['deltaTime'] = 5e-2
+    df.at['deltaTime'] = 5.06e-08
     df.at['maxIteration'] = 10
     df.at['convergence'] = 1E-10
     df.at['relaxation'] = 1 # value in [0-1] Very sensitive!!!
