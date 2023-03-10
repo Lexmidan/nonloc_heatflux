@@ -11,7 +11,6 @@ import numpy as np
 import pandas as pd
 
 
-
 def evolutionField(results):
     """ Generate 3D temperature fields
     
@@ -50,7 +49,7 @@ def thermalCouplePlot(results, positions):
 
     """
     
-    df = results.loc[positions,:]
+    df = results.loc[positions,:].round(2)
     df = df.T
     df = df.add_prefix('x = ')
     df = df.add_suffix(' m')
@@ -98,8 +97,8 @@ def preprocess(parameter, results):
     numOfTimeStep = parameter['numberOfTimeStep']
     deltaTime = parameter['deltaTime']
     time = deltaTime * numOfTimeStep
-    grids = np.linspace(0, length, numberOfNode).round(5)
-    times = np.linspace(0, time, numOfTimeStep+1).round(5)
+    grids = np.linspace(0, length, numberOfNode)#.round(5)
+    times = np.linspace(0, time, numOfTimeStep+1)#.round(5)
     df = pd.DataFrame(results, 
                       index = grids, 
                       columns = times)

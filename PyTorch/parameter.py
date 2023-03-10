@@ -17,7 +17,9 @@ init_profile=pd.read_csv('init_profile.csv', index_col=(0))
 #####
 init_profile=init_profile.iloc[::50,:]
 init_profile.reset_index(drop=True, inplace=True)
-#init_profile['ne']/=10e3
+init_profile['ne']/=init_profile['ne']*3/2
+
+#init_profile['ne']/=10e8
 #####00
 
 def main():
@@ -34,7 +36,7 @@ def main():
     df = df.astype('object')
     
     # System-level 
-    df.at['problem'] = 'HeatConduction'
+    df.at['problem'] = 'NonlocHeatConduction'
     df.at['SpatialDiscretize'] = 'CenteredDifferencing'
     df.at['TimeDiscretize'] = 'BackwardEular'
     df.at['ODEsolver'] = 'NewtonIteration'
@@ -45,11 +47,9 @@ def main():
 
     
     # Material
-    df.at['material'] = 'steel'
-    df.at['material function'] = 'constant'
-    df.at['density'] = 7850
+    df.at['material function'] = 'Given by NN'
     df.at['conductivity'] =(init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
-    df.at['heatCapacity'] = 434
+
     
     # Grid
     df.at['length'] = 1
@@ -57,11 +57,11 @@ def main():
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 10#400
-    df.at['deltaTime'] = 5.06e-08
+    df.at['numberOfTimeStep'] = 200#400
+    df.at['deltaTime'] = 5.06e-7
     df.at['maxIteration'] = 10
-    df.at['convergence'] = 1E-10
-    df.at['relaxation'] = 1 # value in [0-1] Very sensitive!!!
+    df.at['convergence'] = 1E-2
+    df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     df.at['scaling']=pd.read_csv('data_scaling.csv'\
                                  , index_col=(0))
     
@@ -92,16 +92,16 @@ if __name__ == "__main__":
     parameter = main()
     results, cache, alphas, betas = hc.solve(parameter)
     pd.DataFrame(results).to_csv('./result_data/T_profiles.csv')
-    #dropping because of unbeateaful init. of alphas and betas
+    #dropping because of awkward init. of alphas and betas
     pd.DataFrame(alphas).drop(0,axis=1).to_csv('./result_data/alphas_profiles.csv')
     pd.DataFrame(betas).drop(0,axis=1).to_csv('./result_data/betas_profiles.csv')
     pd.DataFrame(cache['Jacobian']).to_csv('./result_data/last_Jacobian.csv')
     T = pp.preprocess(parameter, results)
     pp.evolutionField(T)
     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
-    positions = T.index[::int(len(init_profile['x'])*1e-2)]
+    positions = T.index[::int(len(init_profile['x'])*0.5e-2)]
     pp.thermalCouplePlot(T, positions)
-    times = T.columns[::int(len(T.columns)/4)][1:4]
+    times = T.columns[::int(len(T.columns)/10)][1:4]
         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
     pp.temperatureDistribution(T, times)
     

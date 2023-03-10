@@ -30,8 +30,9 @@ def assemble(para, cache):
     
     Return: dictionary containing cache data
     """
-    
+    x = para['x']
     dt = para['deltaTime']
+    dx = para['x'][10]-para['x'][11]     #for different [i] dx differs at 16th decimal place
     numberOfNode = para['numberOfNode']
     # BC informations
     typeX0 = para['x=0 type']
@@ -44,12 +45,12 @@ def assemble(para, cache):
     F = cache['F']; Jacobian = cache['Jacobian']
     
     
-    x=para['x']
+    
     #Z=para['InitZbarProfile']
     ne=para['InitneProfile']
     #Kn=para['InitKnProfile']
     scale=para['scaling']
-    k=para['conductivity']
+    k=para['conductivity']/para['conductivity'] #!!!
     Zscaled=para['ScaledZ']
     nescaled=para['Scaledne']
     Knscaled=para['ScaledKn']
@@ -61,7 +62,7 @@ def assemble(para, cache):
     
     
     #NN part
-    '''  
+    '''
     Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
     gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
     
@@ -103,13 +104,13 @@ def assemble(para, cache):
         params = pd.concat([params.iloc[0].to_frame().T.set_index(pd.Index([xind[0]-i-1])), params])
     for i in range(len(x)-xind[-1]-1):              
         params = pd.concat([params,params.iloc[0].to_frame().T.set_index(pd.Index([xind[-1]+i+1]))])
-    # alphas=params['alpha']
-    # betas=params['beta']
+    alphas=params['alpha'].astype('float64')
+    betas=params['beta'].astype('float64')
     '''
     #Constant alphabetas
     #
-    alphas=np.full(len(x), 1e7)
-    betas=np.full(len(x), 7/2)
+    alphas=np.full(len(x), 1)
+    betas=np.full(len(x), 0)
     #!!!!!
     
     
@@ -126,7 +127,7 @@ def assemble(para, cache):
         
         # BC node at x=0
         if i == 0:
-            dx=x[i+1]-x[i]
+            
             if typeX0 == 'heatFlux':
                 Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
                 Jacobian[0][1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
@@ -148,8 +149,8 @@ def assemble(para, cache):
                             *T[i]**betas[i]
                 
         # Interior nodes
-        else:   #!!! alpha_i+1/2 := alpha[i]
-            dx=x[i+1]-x[i]
+        else:   #!!! \alpha_{i+1/2} := alpha[i]
+            
             Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
             Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             Jacobian[i][i] = (3/2*ne[i])/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
@@ -159,7 +160,7 @@ def assemble(para, cache):
     d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
     F = (3/2*np.array([ne]).T)*(T - T0)/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
-    cache['F'] = -F; cache['Jacobian'] = Jacobian
+    cache['F'] = F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
     cache['beta']=betas
     #print('it num')
@@ -214,7 +215,7 @@ def solveLinearSystem(para, cache):
     B = cache['F']
     dT = np.linalg.solve(A, B)
     T = cache['T']
-    T = dT * relax + T      #T(j+1)=T(j)+J``(-F) :I have -F saved in cache as F
+    T = T-dT * relax      #T(j+1)=T(j)+JI``(F)
     cache['T']=T
     cache['dT'] = dT
     return cache

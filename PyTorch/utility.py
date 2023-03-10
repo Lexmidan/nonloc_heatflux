@@ -54,20 +54,20 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, k):
     
     d2U = np.zeros((U.size, 1))
     for i in range(0, U.size):
-        if i==0:
-            d2U[i] = (k[i] * alphas[i]/(betas[i+1]+1))*(Ug1 - 2*U[i] + U[i+1])
-        elif i==(U.size - 1):
-            d2U[i] = (k[i] * alphas[i]/(betas[i]+1))*(U[i-1] - 2*U[i] + Ug2)
-        else:
-            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*U[i+1]**(betas[i]+1)-\
-                    ((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)+\
-                    (alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
             
-            """
-            (k[i+1] * alphas[i+1]/(betas[i+1]+1))*U[i+1]**(betas[i+1]+1)\
-                -(alphas[i]*k[i-1]/(betas[i-1]+1)+alphas[i+1]*k[i+1]/(betas[i+1]+1))*U[i]**(betas[i]+1)\
-                 +alphas[i-1]*k[i-1]/(betas[i-1]+1)*U[i-1]**(betas[i-1]+1)
-            """
+        if i==0:
+            d2U[i] = (alphas[1]*k[1]/(betas[1]+1))*U[2]**(betas[1]+1)\
+                    -((alphas[0]*k[0]/(betas[0]+1))+(alphas[0]*k[1]/(betas[i]+1)))*U[1]**(betas[0]+1)\
+                    +(alphas[0]*k[0]/(betas[0]+1))*U[0]**(betas[0]+1)
+        elif i==(U.size - 1):
+            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*Ug2**(betas[i]+1)\
+                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
+                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+        else:
+            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*U[i+1]**(betas[i]+1)\
+                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
+                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+            
     return d2U
 
 
