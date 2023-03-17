@@ -15,9 +15,12 @@ import torch
 init_profile=pd.read_csv('init_profile.csv', index_col=(0))
 
 #####
-init_profile=init_profile.iloc[::50,:]
+init_profile=init_profile.iloc[::4000,:]
 init_profile.reset_index(drop=True, inplace=True)
 #####00
+Te = init_profile['Te']
+print(f'len(Te) {len(Te)}')
+print(Te)
 
 def main():
     """ Generate parameter
@@ -57,7 +60,7 @@ def main():
     
     # Solution
     df.at['numberOfTimeStep'] = 10#400
-    df.at['deltaTime'] = 5e-2
+    df.at['deltaTime'] = 1e-2
     df.at['maxIteration'] = 10
     df.at['convergence'] = 1E-10
     df.at['relaxation'] = 1 # value in [0-1] Very sensitive!!!
@@ -78,10 +81,12 @@ def main():
     
     
     # Boundary conditions
-    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 0
-    df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=L value'] = 0  
+    df.at['x=0 type'] = 'heatFlux'
+    #df.at['x=0 type'] = 'fixedTemperature'
+    df.at['x=0 value'] = 'NOT USED, we simply freeze to T0(x=0)'
+    #df.at['x=L type'] = 'heatFlux'
+    df.at['x=L type'] = 'fixedTemperature'
+    df.at['x=L value'] = 'NOT USED, we simply freeze to T0(x=L)'
     
     return df
 

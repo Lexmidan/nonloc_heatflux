@@ -122,42 +122,75 @@ def assemble(para, cache):
 # Loop over grid
     '''
     
+    dxc = 1.0
+    betac = 2.5
+    akc = 1.0
+    Cvc = 1.0
+    ###
+    Jacobian = 0.0 * Jacobian
+    F = 0.0 * F
+    ###
     for i in range(0, numberOfNode):
         
         # BC node at x=0
         if i == 0:
-            dx=x[i+1]-x[i]
-            if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
-                Jacobian[0][1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
-            elif typeX0 == 'fixedTemperature':
-                Ug1 = utility.fixedValue(valueX0, T[1])
-                Jacobian[0][1] = 0
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(2*k[i]* alphas[i])\
-                            *T[i]**betas[i]
+            if typeX0 == 'fixedTemperature':
+                # T[0] = T0[0]
+                F[i] = 0.0
+                Jacobian[i][i] = 1.0
+                Jacobian[i][i+1] = 0.0
+            elif typeX0 == 'heatFlux':
+                # T[0] = T[-1]
+                F[i] = Cvc / dt * (T[i] - T0[i]) - akc / (betac + 1.0) / dxc**2.0 * (- T[i]**(betac + 1.0) + T[i+1]**(betac + 1.0))
+                Jacobian[i][i] = Cvc / dt + akc / dxc**2.0 * T[i]**betac
+                Jacobian[i][i+1] = - akc / dxc**2.0 * T[i+1]**betac
+            #dx=x[i+1]-x[i]
+            #if typeX0 == 'heatFlux':
+            #    Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
+            #    Jacobian[0][1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+            #elif typeX0 == 'fixedTemperature':
+            #    Ug1 = utility.fixedValue(valueX0, T[1])
+            #    Jacobian[0][1] = 0
+            #Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(2*k[i]* alphas[i])\
+            #                *T[i]**betas[i]
         # BC node at x=L
         elif i == numberOfNode-1:
-            dx=x[i]-x[i-1]
-            if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
-                Jacobian[-1][-2] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
-            elif typeXL == 'fixedTemperature':
-                Ug2 = utility.fixedValue(valueXL, T[-2])
-                Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
-                            *T[i]**betas[i]
+            if typeXL == 'fixedTemperature':
+                # T[N-1] = T0[N-1]
+                F[i] = 0.0
+                Jacobian[i][i] = 1.0
+                Jacobian[i][i-1] = 0.0
+            elif typeXL == 'heatFlux':
+                # T[N-1] = T[N]
+                F[i] = Cvc / dt * (T[i] - T0[i]) - akc / (betac + 1.0) / dxc**2.0 * (T[i-1]**(betac + 1.0) - T[i]**(betac + 1.0))
+                Jacobian[i][i] = Cvc / dt + akc / dxc**2.0 * T[i]**betac
+                Jacobian[i][i-1] = - akc / dxc**2.0 * T[i-1]**betac
+
+            #dx=x[i]-x[i-1]
+            #if typeXL == 'heatFlux':
+            #    Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
+            #    Jacobian[-1][-2] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+            #elif typeXL == 'fixedTemperature':
+            #    Ug2 = utility.fixedValue(valueXL, T[-2])
+            #    Jacobian[-1][-2] = 0
+            #Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            #                *T[i]**betas[i]
                 
         # Interior nodes
         else:   #!!! alpha_i+1/2 := alpha[i]
-            dx=x[i+1]-x[i]
-            Jacobian[i][i+1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
-            Jacobian[i][i-1] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
-            Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
-                           *T[i]**betas[i]
+            F[i] = Cvc / dt * (T[i] - T0[i]) - akc / (betac + 1.0) / dxc**2.0 * (T[i-1]**(betac + 1.0) - 2.0 * T[i]**(betac + 1.0) + T[i+1]**(betac + 1.0))
+            Jacobian[i][i-1] = - akc / dxc**2.0 * T[i-1]**betac
+            Jacobian[i][i] = Cvc / dt + akc / dxc**2.0 * 2.0 * T[i]**betac
+            Jacobian[i][i+1] = - akc / dxc**2.0 * T[i+1]**betac
+            #dx=x[i+1]-x[i]
+            #Jacobian[i][i+1] = -(dt/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+            #Jacobian[i][i-1] = -(dt/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+            #Jacobian[i][i] = (3/2*ne[i])+ (dt/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            #               *T[i]**betas[i]
     
     # Calculate F (right hand side vector)
-    gradq = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    F = (3/2*np.array([ne]).T)*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
+    #gradq = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
+    #F = (3/2*np.array([ne]).T)*(T - T0) - (dt/dx**2)*gradq # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = -F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
@@ -263,6 +296,7 @@ def newtonIteration(para, cache):
         cache = assemble(para, cache)
         F = cache['F']
         norm = np.linalg.norm(F)
+        print(f'iter = {n}, |F| = {norm}')
         if norm < convergence:
             log.loc[ts,'PhysicalTime'] = dt*ts
             log.loc[ts,'Iteration'] = n+1
@@ -300,12 +334,13 @@ def solve(para):
         cache['ts'] = timeStep
         cache = newtonIteration(para, cache)
         cache = storeUpdateResult(cache)
+        print(cache['T'])
     TProfile = cache['TProfile']
     alpha_prof = cache['alpha_prof']
     betas_prof = cache['beta_prof']
     runtime = time.time() - start
     print('[Cost] CPU time spent','%.3f'%runtime,'s')
-    return TProfile, cache, alpha_prof, betas_prof
+    return TProfile, cache #, alpha_prof, betas_prof
 
 
 
