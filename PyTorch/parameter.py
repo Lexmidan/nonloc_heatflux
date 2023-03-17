@@ -81,12 +81,19 @@ def main():
     
     
     # Boundary conditions
+    Te = init_profile['Te']
     df.at['x=0 type'] = 'heatFlux'
     #df.at['x=0 type'] = 'fixedTemperature'
-    df.at['x=0 value'] = 'NOT USED, we simply freeze to T0(x=0)'
+    if df.at['x=0 type'] == 'heatFlux':
+        df.at['x=0 value'] = 'NOT USED'
+    else:
+        df.at['x=0 value'] = f'We simply freeze T(x=0) to T0(x=0) = {Te[0]:.6e}'
     #df.at['x=L type'] = 'heatFlux'
     df.at['x=L type'] = 'fixedTemperature'
-    df.at['x=L value'] = 'NOT USED, we simply freeze to T0(x=L)'
+    if df.at['x=L type'] == 'heatFlux':
+        df.at['x=L value'] = 'NOT USED'
+    else:
+        df.at['x=L value'] = f'We simply freeze T(x=L) to T0(x=L) = {Te[len(init_profile)-1]:.6e}'
     
     return df
 
