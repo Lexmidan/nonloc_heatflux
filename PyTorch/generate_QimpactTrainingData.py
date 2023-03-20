@@ -6,7 +6,6 @@ import sys
 
 #!!!
 def impdata(filename):
-    #path=f'https://raw.githubusercontent.com/homijan/ML-student-projects/intro-ab/students/bogdaale/gd-profiles/{filename}'
     path = f'gd-profiles/{filename}'
     return path
 #!!!
@@ -19,7 +18,8 @@ x_Qimpact, Qimpact = np.loadtxt(impdata('Q_gdhohlraum_microns_10ps_IMPACTWcm2.tx
 x_Qimpact/=1e4
 
 # In order to include Kn
-x_Qc7bBGK, Qc7bBGK, Knx = np.loadtxt(impdata('Q_gdhohlraum_cm_10ps_c7b-bgk-Wcm2-clogCHIC.txt'), comments='#', delimiter=', ', usecols=(0, 8, 6), unpack=True)
+x_Qc7bBGK, Qc7bBGK, Knx = np.loadtxt(impdata('Q_gdhohlraum_cm_10ps_c7b-bgk-Wcm2-clogCHIC.txt'),\
+                                     comments='#', delimiter=', ', usecols=(0, 8, 6), unpack=True)
 
 
 def getsub(f, x, xref):
@@ -34,7 +34,7 @@ def get_data(x, T, gradT, Z, n, Kn, Qimp, width, step, T_mean, T_std):
     rad=0     #finds out how many points fits in (!)radius(!) range
     s=0
     while s<=width/2:
-        s=xref[rad]-xref[0]
+        s=x[rad]-x[0]
         rad+=1
     
     numPoints = len(Z[0:2*rad:step]) #int(2*rad/step)+1 # the plus one because of integer evaluation
@@ -144,7 +144,6 @@ gradTe=np.gradient(Te, xref)
 ##initial profile later used in heat conduction
 
 init_profile=pd.DataFrame([xref,Te,gradTe,Zbar,ne,absKnx], index=['x','Te', 'gradTe', 'Zbar', 'ne', 'Kn']).T
-
 
 path = './'
 # Scale the input data
