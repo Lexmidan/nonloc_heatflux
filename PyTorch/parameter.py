@@ -8,22 +8,15 @@ Modified on 18.02.23
 import postprocessing as pp
 import heatConduction as hc
 import pandas as pd
+import NN_training
 import torch
 import HeatfluxModel as hfm
-import NN_training
-from torch.utils.data import DataLoader
-import pytorch_lightning as pl
-#from pytorch_lightning.profiler import Profiler, AdvancedProfiler
-import HeatfluxData as hfd
-
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
 init_profile=pd.read_csv('init_profile.csv', index_col=(0))
-step=init_profile['step'][0]
-width=init_profile['width'][0]
 #####
-#init_profile=init_profile.iloc[::50,:]
-#init_profile.reset_index(drop=True, inplace=True)
-#init_profile['ne']/=init_profile['ne']*3/2
+init_profile=init_profile.iloc[::200,:]
+init_profile.reset_index(drop=True, inplace=True)
+init_profile['ne']/=init_profile['ne']*3/2
 
 #####00
 
@@ -48,24 +41,21 @@ def main():
     df.at['linearSolver'] = 'numpy linalg'
     df.at['CPU'] = 1
     
-    
-    
 
 
     # Material
     df.at['material function'] = 'Given by NN'
     df.at['conductivity'] =(init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
 
-    
     # Grid
     df.at['length'] = 1
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 20#400
-    df.at['deltaTime'] = 5.06e-7
-    df.at['maxIteration'] = 10
+    df.at['numberOfTimeStep'] = 200#400
+    df.at['deltaTime'] = 1e-4
+    df.at['maxIteration'] = 100
     df.at['convergence'] = 1E-2
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     df.at['scaling']=pd.read_csv('data_scaling.csv', index_col=(0))
@@ -83,21 +73,21 @@ def main():
     df.at['Scaledne'] = (init_profile['ne']-df.at['scaling']['n'].loc['mean'])/df.at['scaling']['n'].loc['std']
     df.at['ScaledZ'] = (init_profile['Zbar']-df.at['scaling']['Z'].loc['mean'])/df.at['scaling']['Z'].loc['std']
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
-    df.at['width']=width#init_profile['width'][0]
-    df.at['step']=step#init_profile['step'][0]
     
     # Boundary conditions
-    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 0
-    df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=L value'] = 0  
+    df.at['x=0 type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
+    df.at['x=0 value'] = 2500
+    df.at['x=L type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
+    df.at['x=L value'] = 10
     
     #NN
     # model=hfm.AlphaBetaModel(*pd.read_pickle('./NN/NN_model_args.pkl'))
     # model.load_state_dict(torch.load('./NN/Model.pt'))
     # model.eval()
     # df.at['NNmodel']= model
-    df.at['NNmodel']= NN_training.trained_model()
+    
+    # df.at['NNmodel']= NN_training.train_model()
+    # torch.save(df.at['NNmodel'].state_dict(), './NN/Model.pt')
     return df
 
 
