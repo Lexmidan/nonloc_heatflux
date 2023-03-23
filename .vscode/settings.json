@@ -1,0 +1,8 @@
+{
+}
+"files.watcherExclude": {
+    "**/__pycache__": true,
+    "**/gd-profiles": true,
+    "**/lightning_logs": true,
+ 
+}

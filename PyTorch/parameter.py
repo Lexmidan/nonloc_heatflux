@@ -19,7 +19,7 @@ init_profile.reset_index(drop=True, inplace=True)
 init_profile['ne']/=init_profile['ne']*3/2
 
 #####00
-
+a=32312
 def main():
     """ Generate parameter
     
@@ -53,9 +53,9 @@ def main():
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 200#400
+    df.at['numberOfTimeStep'] = 2000#400
     df.at['deltaTime'] = 1e-4
-    df.at['maxIteration'] = 100
+    df.at['maxIteration'] = 20
     df.at['convergence'] = 1E-2
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     df.at['scaling']=pd.read_csv('data_scaling.csv', index_col=(0))
