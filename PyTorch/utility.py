@@ -21,7 +21,7 @@ def fixedValue(value, U2):
     return Ug
 
 
-#TEST GIT EXTS WITHIN VS CODE
+#TEST GIT EXTS WI
 def fixedGradient(q, k, dx, U1, i):
     """  Neumann boundary condition
     
