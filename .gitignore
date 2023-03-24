@@ -3,7 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-*.csv
+
 
 # C extensions
 *.so
@@ -30,6 +30,7 @@ share/python-wheels/
 MANIFEST
 PyTorch/lightning_logs/
 lightning_logs/
+*.bak
 
 # PyInstaller
 #  Usually these files are written by a python script from a template
