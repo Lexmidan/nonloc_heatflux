@@ -93,19 +93,19 @@ def main(model):
 
 
 
-if __name__ == "__main__":
-    parameter = main(model)
-    results, cache, alphas, betas = hc.solve(parameter)
-    pd.DataFrame(results).to_csv('./PyTorch/result_data/T_profiles.csv')
-    pd.DataFrame(cache['Jacobian']).to_csv('./PyTorch/result_data/last_Jacobian.csv')
-    T = pp.preprocess(parameter, results)
-    pp.evolutionField(T)
-    #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
-    positions = T.index[::int(len(init_profile['x'])*3e-2)]
-    pp.thermalCouplePlot(T, positions)
-    times = T.columns[::int(len(T.columns)/10)][1:4]
-        #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
-    pp.temperatureDistribution(T, times)
+# if __name__ == "__main__":
+#     parameter = main(model)
+#     results, cache, alphas, betas = hc.solve(parameter)
+#     pd.DataFrame(results).to_csv('./PyTorch/result_data/T_profiles.csv')
+#     pd.DataFrame(cache['Jacobian']).to_csv('./PyTorch/result_data/last_Jacobian.csv')
+#     T = pp.preprocess(parameter, results)
+#     pp.evolutionField(T)
+#     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
+#     positions = T.index[::int(len(init_profile['x'])*3e-2)]
+#     pp.thermalCouplePlot(T, positions)
+#     times = T.columns[::int(len(T.columns)/10)][1:4]
+#         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
+#     pp.temperatureDistribution(T, times)
     
     
     
