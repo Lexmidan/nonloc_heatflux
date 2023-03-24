@@ -14,8 +14,8 @@ import torch
 import HeatfluxData as hfd
 
 def train_model():
-    training_data = 'scaled_QdataKn21width100microns.csv'
-    data_scaling = pd.read_csv('data_scaling.csv', header=0, index_col=0)
+    training_data = './PyTorch/scaled_QdataKn21width100microns.csv'
+    data_scaling = pd.read_csv('./PyTorch/data_scaling.csv', header=0, index_col=0)
     test_split = 0.5
     train_split = 0.8
     dropouts = []
@@ -32,7 +32,7 @@ def train_model():
 
     Nlayers = [30, 30]
     NNmodelargs=pd.Series([Nfeatures, Nlayers, data_scaling, Nfields], dtype=object)
-    NNmodelargs.to_pickle('./NN/NN_model_args.pkl')
+    NNmodelargs.to_pickle('./PyTorch/NN/NN_model_args.pkl')
     model = hfm.AlphaBetaModel(*NNmodelargs)
     trainer = pl.Trainer(max_epochs = 100)
     trainer.fit(model, train_loader, validation_loader)

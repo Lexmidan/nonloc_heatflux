@@ -8,18 +8,15 @@ Modified on 18.02.23
 import postprocessing as pp
 import heatConduction as hc
 import pandas as pd
-import NN_training
-import torch
 import HeatfluxModel as hfm
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
-init_profile=pd.read_csv('init_profile.csv', index_col=(0))
+init_profile=pd.read_csv('./PyTorch/init_profile.csv', index_col=(0))
 #####
 init_profile=init_profile.iloc[::200,:]
 init_profile.reset_index(drop=True, inplace=True)
 init_profile['ne']/=init_profile['ne']*3/2
 
-#####00
-a=32312
+#####
 def main():
     """ Generate parameter
     
@@ -53,12 +50,12 @@ def main():
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 100#400
-    df.at['deltaTime'] = 1e-12
+    df.at['numberOfTimeStep'] = 20#400
+    df.at['deltaTime'] = 1e-6
     df.at['maxIteration'] = 100
     df.at['convergence'] = 1E1
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
-    df.at['scaling']=pd.read_csv('data_scaling.csv', index_col=(0))
+    df.at['scaling']=pd.read_csv('./PyTorch/data_scaling.csv', index_col=(0))
     
     # Initial conditions
     df.at['InitTeProfile'] = init_profile['Te']
@@ -75,10 +72,10 @@ def main():
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
     
     # Boundary conditions
-    df.at['x=0 type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 2500
-    df.at['x=L type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
-    df.at['x=L value'] = 10
+    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
+    df.at['x=0 value'] = 0
+    df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
+    df.at['x=L value'] = 0
     
     #NN
     # model=hfm.AlphaBetaModel(*pd.read_pickle('./NN/NN_model_args.pkl'))
@@ -86,8 +83,8 @@ def main():
     # model.eval()
     # df.at['NNmodel']= model
     
-    df.at['NNmodel']= NN_training.train_model()
-    torch.save(df.at['NNmodel'].state_dict(), './NN/Model.pt')
+    #df.at['NNmodel']= model #NN_training.train_model()
+    #torch.save(df.at['NNmodel'].state_dict(), './PyTorch/NN/Model.pt')
     return df
 
 
@@ -95,11 +92,11 @@ def main():
 if __name__ == "__main__":
     parameter = main()
     results, cache, alphas, betas = hc.solve(parameter)
-    pd.DataFrame(results).to_csv('./result_data/T_profiles.csv')
+    pd.DataFrame(results).to_csv('./PyTorch/result_data/T_profiles.csv')
     #dropping because of awkward init. of alphas and betas
-    pd.DataFrame(alphas).drop(0,axis=1).to_csv('./result_data/alphas_profiles.csv')
-    pd.DataFrame(betas).drop(0,axis=1).to_csv('./result_data/betas_profiles.csv')
-    pd.DataFrame(cache['Jacobian']).to_csv('./result_data/last_Jacobian.csv')
+    pd.DataFrame(alphas).drop(0,axis=1).to_csv('./PyTorch/result_data/alphas_profiles.csv')
+    pd.DataFrame(betas).drop(0,axis=1).to_csv('./PyTorch/result_data/betas_profiles.csv')
+    pd.DataFrame(cache['Jacobian']).to_csv('./PyTorch/result_data/last_Jacobian.csv')
     T = pp.preprocess(parameter, results)
     pp.evolutionField(T)
     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?

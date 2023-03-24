@@ -6,7 +6,7 @@ import sys
 
 #!!!
 def impdata(filename):
-    path = f'gd-profiles/{filename}'
+    path = f'/PyTorch/gd-profiles/{filename}'
     return path
 #!!!
 
@@ -144,8 +144,6 @@ gradTe=np.gradient(Te, xref)
 ##initial profile later used in heat conduction
 
 init_profile=pd.DataFrame([xref,Te,gradTe,Zbar,ne,absKnx], index=['x','Te', 'gradTe', 'Zbar', 'ne', 'Kn']).T
-init_profile=pd.concat([init_profile, pd.DataFrame({'width':[float(width)], 'step':[step]})], axis=1)
-
 path = './'
 # Scale the input data
 data_scaling=pd.DataFrame(index=['mean', 'std'], columns=['T', 'gradT', 'Z', 'n', 'Kn', 'Q', 'beta']) #will contain mean values and std

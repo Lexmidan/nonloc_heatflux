@@ -45,18 +45,8 @@ def assemble(para, cache, alphas, betas):
     F = cache['F']; Jacobian = cache['Jacobian']
     
     ne=para['InitneProfile']
-    Kb=1#.60217e-12 #eV-> erg
-    k=np.ones(len(para['x']))##para['conductivity']
-    """
-    Parameters given by NN:
-    """    
-    # alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
-    #                                           nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
-
-    
-    #interpolating in half steps (alpha_i+1/2=alpha[i])
-    #returns always a slitely bigger value
-
+    Kb=1.60217e-8 #eV-> erg
+    k=np.ones(len(para['x']))#para['conductivity']#
     '''    
     Loop over grid
     '''
@@ -214,13 +204,13 @@ def newtonIteration(para, cache):
     """
     Parameters given by NN:
     """    
-    alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
-                                              nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
-    params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
+    # alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
+    #                                 nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
+    # params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     
     
-    # alphas=np.full(len(x), 1)
-    # betas=np.full(len(x), 2.5)
+    alphas=np.linspace(1,8, len(x))#np.full(len(x), 1)
+    betas=np.linspace(2.5,0, len(x))#np.full(len(x), 2.5)
     alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
     betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     
@@ -312,7 +302,7 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
     return alphas, betas
 
-fig1, ax1 = plt.subplots(figsize=(10,5))
+fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
 if __name__ == "__main__":
