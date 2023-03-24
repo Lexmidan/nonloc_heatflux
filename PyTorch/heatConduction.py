@@ -7,8 +7,6 @@ Modified 27.02.23
 """
 import numpy as np
 import pandas as pd
-import parameter
-import utility
 import time
 import torch
 from matplotlib import pyplot as plt
@@ -29,7 +27,6 @@ def assemble(para, cache, alphas, betas):
     
     Return: dictionary containing cache data
     """
-    #x = para['x']
     dt = para['deltaTime']
     dx = para['x'].iloc[11]-para['x'].iloc[10]     #for different [i] dx differs at 16th decimal place
     numberOfNode = para['numberOfNode']
@@ -67,7 +64,8 @@ def assemble(para, cache, alphas, betas):
         elif i == numberOfNode-1:
             if typeXL == 'heatFlux':
                 #Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
-                F[i]=(3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/(betas[i]+1)*(T[i-1]**(betas[i-1] + 1.0)-T[i]**(betas[i] + 1.0))
+                F[i]=(3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/\
+                    (betas[i]+1)*(T[i-1]**(betas[i-1] + 1.0)-T[i]**(betas[i] + 1.0))
                 Jacobian[-1][-2] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             elif typeXL == 'fixedTemperature':
                 #Ug2 = utility.fixedValue(valueXL, T[-2])
@@ -83,16 +81,11 @@ def assemble(para, cache, alphas, betas):
                            *T[i]**betas[i]
             F[i] = (3/2*ne[i])*(T[i] - T0[i])*Kb/dt - ((alphas[i]*k[i]/(betas[i]+1))*T[i+1]**(betas[i]+1)\
                     -((alphas[i-1]*k[i-1]/(betas[i-1]+1)) + (alphas[i]*k[i]/(betas[i]+1)))*T[i]**(betas[i]+1)\
-                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*T[i-1]**(betas[i-1]+1))/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
-    
-    # Calculate F (right hand side vector)
-    #d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    #F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
+                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*T[i-1]**(betas[i-1]+1))/dx**2
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
     cache['beta']=betas
-    #print('it num')
     return cache
 
 
@@ -113,14 +106,26 @@ def initialize(para):
     Tic = para['InitTeProfile']
     T = np.reshape(Tic.values, (numberOfNode,1)) #numberOfNode rows with Tic values
     T0 = np.reshape(Tic.values, (numberOfNode,1))
-    alpha = np.ones((numberOfNode))
-    beta = np.zeros((numberOfNode))
+    if para['NNmodel']==None:
+        alpha = para['alphas']
+        beta = para['betas']
+    else:
+        scale=para['scaling']
+        Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
+        gradT=np.gradient(np.reshape(T, (numberOfNode)),para['x'].values)
+        gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
+        alpha, beta = get_data_qless(para, para['x'], Tscaled, gradTscaled,para['ScaledZ'], \
+                                para['Scaledne'], para['ScaledKn'], int(para['NNmodel'].fcIn.in_features/6))
+                                                                        #size of the input vector
+
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
     alpha_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
     beta_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
     TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
+    alpha_prof[:,0] = alpha.reshape(1,-1)
+    beta_prof[:,0] = beta.reshape(1,-1)
     cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha, 'beta':beta,
              'F':F,'Jacobian':Jacobian,
              'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof,  }
@@ -198,19 +203,24 @@ def newtonIteration(para, cache):
     Zscaled=para['ScaledZ']
     nescaled=para['Scaledne']
     Knscaled=para['ScaledKn']
-    gradT=np.gradient(np.reshape(T, (numberOfNode)),x.values) #initially T had form of [[1],[2],[3]...] not [1,2,3]
+    gradT=np.gradient(np.reshape(T, (numberOfNode)),x.values)
+    #initially T had form of [[1],[2],[3]...] not [1,2,3]
     Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
     gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
     """
     Parameters given by NN:
     """    
-    # alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
-    #                                 nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
-    # params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
+    if para['NNmodel']==None:
+        alphas=para['alphas']
+        betas=para['betas']
+    else:
+        alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
+                                        nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6))
+                                                                                #size of the input vector
+        params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     
     
-    alphas=np.linspace(1,8, len(x))#np.full(len(x), 1)
-    betas=np.linspace(2.5,0, len(x))#np.full(len(x), 2.5)
+    #interpolation needed in order to 'place' coefficients to the center of the cell
     alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
     betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     
@@ -289,7 +299,6 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
             # if ind%5000==0:
             #     print(f"We're done with {ind}/{len(x)-lng+1} points") 
     Qdata =torch.tensor(np.c_[Qdata, np.empty([len(Qdata), lng])]).float()
-    
     heatflux = para['NNmodel'].heatflux_model(Qdata.float()).detach().numpy()
     ax1.plot(heatflux)
     alphas=para['NNmodel'].alpha_model(Qdata.float()).detach().numpy()
@@ -304,9 +313,4 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
 
 fig1, ax1 = plt.subplots(figsize=(6,3))
 
-
-if __name__ == "__main__":
-    para = parameter.main()
-    results, cache, alphas, betas = solve(para)
-    
 

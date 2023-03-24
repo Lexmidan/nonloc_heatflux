@@ -29,7 +29,7 @@ def evolutionField(results):
     ax = fig.add_subplot(projection='3d')
     ax.set_xlabel('x, m')
     ax.set_ylabel('Time, s')
-    ax.set_zlabel('Temperature, K')
+    ax.set_zlabel('Value')
     Z = results.T.values
     ax.plot_surface(X, Y, Z, 
                     cmap=cm.seismic,
@@ -103,17 +103,6 @@ def preprocess(parameter, results):
                       index = grids, 
                       columns = times)
     return df
-
-
-
-if __name__ == "__main__":
-    global para, results
-    test = preprocess(para, results)
-    evolutionField(test)
-    positions = [0, 0.002, 0.004, 0.006, 0.008, 0.01]
-    thermalCouplePlot(test, positions)
-    times = [0, 2, 4, 6, 8, 10]
-    temperatureDistribution(test, times)
     
     
     
