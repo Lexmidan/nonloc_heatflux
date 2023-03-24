@@ -26,7 +26,7 @@ def evolutionField(results):
     X, Y = np.meshgrid(X, Y)
     
     fig = plt.figure(figsize=(8,6))
-    ax = fig.gca(projection='3d')
+    ax = fig.add_subplot(projection='3d')
     ax.set_xlabel('x, m')
     ax.set_ylabel('Time, s')
     ax.set_zlabel('Temperature, K')

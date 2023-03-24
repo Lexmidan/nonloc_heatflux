@@ -13,7 +13,7 @@ import numpy as np
 import torch
 import HeatfluxData as hfd
 
-def trained_model():
+def train_model():
     training_data = 'scaled_QdataKn21width100microns.csv'
     data_scaling = pd.read_csv('data_scaling.csv', header=0, index_col=0)
     test_split = 0.5

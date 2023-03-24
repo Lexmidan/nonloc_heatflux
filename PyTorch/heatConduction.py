@@ -46,7 +46,7 @@ def assemble(para, cache, alphas, betas):
     
     ne=para['InitneProfile']
     Kb=1#.60217e-12 #eV-> erg
-    k=para['conductivity']
+    k=np.ones(len(para['x']))##para['conductivity']
     """
     Parameters given by NN:
     """    
@@ -64,33 +64,40 @@ def assemble(para, cache, alphas, betas):
         # BC node at x=0
         if i == 0:
             if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
+                #Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
                 Jacobian[0][1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+                F[i] = (3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/(betas[i]+1)*(T[i+1]**(betas[i+1] + 1.0)-T[i]**(betas[i] + 1.0))
             elif typeX0 == 'fixedTemperature':
-                Ug1 = utility.fixedValue(valueX0, T[1])
+                #Ug1 = utility.fixedValue(valueX0, T[1])
+                F[i]=0
                 Jacobian[0][1] = 0
             Jacobian[i][i] = (3/2*ne[i]*Kb)/dt+ (1/dx**2)*(2*k[i]* alphas[i])\
                             *T[i]**betas[i]
         # BC node at x=L
         elif i == numberOfNode-1:
             if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
+                #Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
+                F[i]=(3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/(betas[i]+1)*(T[i-1]**(betas[i-1] + 1.0)-T[i]**(betas[i] + 1.0))
                 Jacobian[-1][-2] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             elif typeXL == 'fixedTemperature':
-                Ug2 = utility.fixedValue(valueXL, T[-2])
+                #Ug2 = utility.fixedValue(valueXL, T[-2])
+                F[i]=0
                 Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
                             *T[i]**betas[i]  
         # Interior nodes
         else:   #!!! \alpha_{i+1/2} := alpha[i]
             Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
             Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt+ (1/dx**2)*(k[i-1]*alphas[i-1]+k[i]* alphas[i])\
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
                            *T[i]**betas[i]
+            F[i] = (3/2*ne[i])*(T[i] - T0[i])*Kb/dt - ((alphas[i]*k[i]/(betas[i]+1))*T[i+1]**(betas[i]+1)\
+                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1)) + (alphas[i]*k[i]/(betas[i]+1)))*T[i]**(betas[i]+1)\
+                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*T[i-1]**(betas[i-1]+1))/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     
     # Calculate F (right hand side vector)
-    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
+    #d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
+    #F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
@@ -207,13 +214,13 @@ def newtonIteration(para, cache):
     """
     Parameters given by NN:
     """    
-    # alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
-    #                                           nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
-    # params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
+    alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
+                                              nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6)) #number of points
+    params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     
     
-    alphas=np.full(len(x), 1)
-    betas=np.full(len(x), 0)
+    # alphas=np.full(len(x), 1)
+    # betas=np.full(len(x), 2.5)
     alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
     betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     

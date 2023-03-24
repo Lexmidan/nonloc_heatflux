@@ -45,7 +45,7 @@ def main():
 
     # Material
     df.at['material function'] = 'Given by NN'
-    df.at['conductivity'] =(init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
+    df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
 
     # Grid
     df.at['length'] = 1
@@ -53,10 +53,10 @@ def main():
     df.at['x']=init_profile['x']
     
     # Solution
-    df.at['numberOfTimeStep'] = 2000#400
-    df.at['deltaTime'] = 1e-4
-    df.at['maxIteration'] = 20
-    df.at['convergence'] = 1E-2
+    df.at['numberOfTimeStep'] = 100#400
+    df.at['deltaTime'] = 1e-12
+    df.at['maxIteration'] = 100
+    df.at['convergence'] = 1E1
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     df.at['scaling']=pd.read_csv('data_scaling.csv', index_col=(0))
     
@@ -86,8 +86,8 @@ def main():
     # model.eval()
     # df.at['NNmodel']= model
     
-    # df.at['NNmodel']= NN_training.train_model()
-    # torch.save(df.at['NNmodel'].state_dict(), './NN/Model.pt')
+    df.at['NNmodel']= NN_training.train_model()
+    torch.save(df.at['NNmodel'].state_dict(), './NN/Model.pt')
     return df
 
 
@@ -103,7 +103,7 @@ if __name__ == "__main__":
     T = pp.preprocess(parameter, results)
     pp.evolutionField(T)
     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
-    positions = T.index[::int(len(init_profile['x'])*0.5e-2)]
+    positions = T.index[::int(len(init_profile['x'])*3e-2)]
     pp.thermalCouplePlot(T, positions)
     times = T.columns[::int(len(T.columns)/10)][1:4]
         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
