@@ -22,7 +22,7 @@ def fixedValue(value, U2):
 
 
 #TEST GIT EXTS WI
-def fixedGradient(q, k, dx, U1, i):
+def fixedGradient(q, k, dx, U1, alphas, betas):
     """  Neumann boundary condition
     
     Assume that the resulted gradient at BC is fixed.
@@ -30,8 +30,8 @@ def fixedGradient(q, k, dx, U1, i):
     
     Return: float
     """
-    
-    Ug =  q / k[i] * 2 * dx  + U1
+    #(U1-Ug)/dx*k=q
+    Ug =  q *(betas+1)/(k*alphas) * 2 * dx  + U1
     return Ug
 
 
@@ -58,7 +58,7 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, k):
         if i==0:
             d2U[i] = (alphas[1]*k[1]/(betas[1]+1))*U[2]**(betas[1]+1)\
                     -((alphas[0]*k[0]/(betas[0]+1))+(alphas[0]*k[1]/(betas[i]+1)))*U[1]**(betas[0]+1)\
-                    +(alphas[0]*k[0]/(betas[0]+1))*U[0]**(betas[0]+1)
+                    +(alphas[0]*k[0]/(betas[0]+1))*Ug1**(betas[0]+1)
         elif i==(U.size - 1):
             d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*Ug2**(betas[i]+1)\
                     -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\

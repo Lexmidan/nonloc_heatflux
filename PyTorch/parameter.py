@@ -65,16 +65,16 @@ def main(model):
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
     
     # Boundary conditions
-    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 0
+    df.at['x=0 type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
+    df.at['x=0 value'] = 3000
     df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=L value'] = 1e95
+    df.at['x=L value'] = 0
     
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']=np.linspace(1,8, len(init_profile))#np.full(len(x), 1)
-        df.at['betas']=np.full(len(init_profile), 2.5)#np.linspace(2.5,0, len(init_profile))#
+        df.at['alphas']=np.linspace(1,8, len(init_profile))#np.linspace(1,8, len(init_profile)) #np.full(len(init_profile), 1)
+        df.at['betas']=np.linspace(2.5,0, len(init_profile))#np.linspace(2.5,0, len(init_profile)) #np.full(len(init_profile), 0)
     else:
         df.at['NNmodel']= model
         scale = df['scaling']

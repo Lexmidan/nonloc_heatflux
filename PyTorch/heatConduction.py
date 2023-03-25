@@ -7,6 +7,7 @@ Modified 27.02.23
 """
 import numpy as np
 import pandas as pd
+import utility
 import time
 import torch
 from matplotlib import pyplot as plt
@@ -51,25 +52,22 @@ def assemble(para, cache, alphas, betas):
         # BC node at x=0
         if i == 0:
             if typeX0 == 'heatFlux':
-                #Ug1 = utility.fixedGradient(valueX0, k, dx, T[1],i) #boundary values
+                Ug1 = utility.fixedGradient(valueX0, k[i], dx, T[0], alphas[i], betas[i]) #boundary values
                 Jacobian[0][1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
-                F[i] = (3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/(betas[i]+1)*(T[i+1]**(betas[i+1] + 1.0)-T[i]**(betas[i] + 1.0))
             elif typeX0 == 'fixedTemperature':
-                #Ug1 = utility.fixedValue(valueX0, T[1])
-                F[i]=0
+                Ug1 = utility.fixedValue(valueX0, T[1])
                 Jacobian[0][1] = 0
             Jacobian[i][i] = (3/2*ne[i]*Kb)/dt+ (1/dx**2)*(2*k[i]* alphas[i])\
                             *T[i]**betas[i]
         # BC node at x=L
         elif i == numberOfNode-1:
             if typeXL == 'heatFlux':
-                #Ug2 = utility.fixedGradient(valueXL, k, dx, T[-2],i)  #boundary values
+                Ug2 = utility.fixedGradient(valueXL, k[i], dx, T[-1], alphas[i], betas[i])  #boundary values
                 F[i]=(3/2*ne[i])*(T[i] - T0[i])*Kb/dt - (1/dx**2)*(k[i]*alphas[i])/\
                     (betas[i]+1)*(T[i-1]**(betas[i-1] + 1.0)-T[i]**(betas[i] + 1.0))
                 Jacobian[-1][-2] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             elif typeXL == 'fixedTemperature':
-                #Ug2 = utility.fixedValue(valueXL, T[-2])
-                F[i]=0
+                Ug2 = utility.fixedValue(valueXL, T[-2])
                 Jacobian[-1][-2] = 0
             Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
                             *T[i]**betas[i]  
@@ -79,9 +77,11 @@ def assemble(para, cache, alphas, betas):
             Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
             Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
                            *T[i]**betas[i]
-            F[i] = (3/2*ne[i])*(T[i] - T0[i])*Kb/dt - ((alphas[i]*k[i]/(betas[i]+1))*T[i+1]**(betas[i]+1)\
-                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1)) + (alphas[i]*k[i]/(betas[i]+1)))*T[i]**(betas[i]+1)\
-                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*T[i-1]**(betas[i-1]+1))/dx**2
+
+    # Calculate F (right hand side vector)
+    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
+    F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
+
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
     cache['alpha']=alphas
@@ -304,6 +304,6 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
     return alphas, betas
 
-fig1, ax1 = plt.subplots(figsize=(6,3))
+#fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
