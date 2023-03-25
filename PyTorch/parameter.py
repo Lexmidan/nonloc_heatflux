@@ -17,6 +17,8 @@ init_profile=init_profile.iloc[::200,:]
 init_profile.reset_index(drop=True, inplace=True)
 #init_profile['ne']/=init_profile['ne']*3/2
 #####
+
+
 def main(model):
     """ Generate parameter
     
@@ -38,32 +40,26 @@ def main(model):
     df.at['linearSolver'] = 'numpy linalg'
     df.at['CPU'] = 1
     
-
-
-    # Material
-    df.at['material function'] = 'Given by NN'
-    df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
-
     # Grid
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x']
-    
-    # Solution
-    df.at['numberOfTimeStep'] = 20#400
-    df.at['deltaTime'] = 1e-6
-    df.at['maxIteration'] = 30
-    df.at['convergence'] = 1E1
-    df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
-    df.at['scaling']=pd.read_csv('./PyTorch/data_scaling.csv', index_col=(0))
-    
+
+    # Material
+    df.at['material function'] = 'Given by NN'
+    #df.at['conductivity']=np.ones(len(df['x']))#
+    df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
+    df.at['boltzman']=1.6e-8 #eV-> erg
+
     # Initial conditions
     df.at['InitTeProfile'] = init_profile['Te']
     df.at['InitneProfile'] = init_profile['ne']
     df.at['InitgradTeProfile'] = init_profile['gradTe']
     df.at['InitZbarProfile'] = init_profile['Zbar']
     df.at['InitKnProfile'] = init_profile['Kn']
+
     #Scaling
+    df.at['scaling']=pd.read_csv('./PyTorch/data_scaling.csv', index_col=(0))
     df.at['Scaledne'] = (init_profile['ne']-df.at['scaling']['n'].loc['mean'])/df.at['scaling']['n'].loc['std']
     df.at['ScaledZ'] = (init_profile['Zbar']-df.at['scaling']['Z'].loc['mean'])/df.at['scaling']['Z'].loc['std']
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
@@ -72,32 +68,38 @@ def main(model):
     df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
     df.at['x=0 value'] = 0
     df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
-    df.at['x=L value'] = 0
+    df.at['x=L value'] = 1e95
     
     #NN
     if model==None:
         df.at['NNmodel']= None
         df.at['alphas']=np.linspace(1,8, len(init_profile))#np.full(len(x), 1)
-        df.at['betas']=np.linspace(2.5,0, len(init_profile))#np.full(len(x), 2.5)
+        df.at['betas']=np.full(len(init_profile), 2.5)#np.linspace(2.5,0, len(init_profile))#
     else:
         df.at['NNmodel']= model
-        
-    # model=hfm.AlphaBetaModel(*pd.read_pickle('./NN/NN_model_args.pkl'))
-    # model.load_state_dict(torch.load('./NN/Model.pt'))
-    # model.eval()
-    # df.at['NNmodel']= model
-    
-    #df.at['NNmodel']= model #NN_training.train_model()
-    #torch.save(df.at['NNmodel'].state_dict(), './PyTorch/NN/Model.pt')
+        scale = df['scaling']
+        Tscaled = (np.reshape(df['InitTeProfile'], (df['numberOfNode']))-scale['T'].loc['mean'])/scale['T'].loc['std']
+        gradT = np.gradient(np.reshape(df['InitTeProfile'], (df['numberOfNode'])),df['x'].values)
+        gradTscaled = (gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
+        df.at['alphas'], df.at['betas'] = hc.get_data_qless(df, df['x'], Tscaled, gradTscaled,df['ScaledZ'], \
+                                df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/6))
+
+    # Solution
+    df.at['numberOfTimeStep'] = 70#400
+    df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
+    df.at['deltaTime'] =np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+                               (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
+    print("dt =","%8.3E" % df['deltaTime'])
+    df.at['maxIteration'] = 30
+    df.at['convergence'] = 1E1
+    df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     return df
 
 
-
+#
 # if __name__ == "__main__":
 #     parameter = main(model)
 #     results, cache, alphas, betas = hc.solve(parameter)
-#     pd.DataFrame(results).to_csv('./PyTorch/result_data/T_profiles.csv')
-#     pd.DataFrame(cache['Jacobian']).to_csv('./PyTorch/result_data/last_Jacobian.csv')
 #     T = pp.preprocess(parameter, results)
 #     pp.evolutionField(T)
 #     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?

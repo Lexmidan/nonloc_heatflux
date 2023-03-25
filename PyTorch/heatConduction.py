@@ -28,7 +28,7 @@ def assemble(para, cache, alphas, betas):
     Return: dictionary containing cache data
     """
     dt = para['deltaTime']
-    dx = para['x'].iloc[11]-para['x'].iloc[10]     #for different [i] dx differs at 16th decimal place
+    dx = para['deltaX']
     numberOfNode = para['numberOfNode']
     
     # BC informations
@@ -42,8 +42,8 @@ def assemble(para, cache, alphas, betas):
     F = cache['F']; Jacobian = cache['Jacobian']
     
     ne=para['InitneProfile']
-    Kb=1.60217e-8 #eV-> erg
-    k=np.ones(len(para['x']))#para['conductivity']#
+    Kb=para['boltzman']
+    k=para['conductivity']
     '''    
     Loop over grid
     '''
@@ -103,20 +103,11 @@ def initialize(para):
     
     numberOfNode = para['numberOfNode']
     numOfTimeStep = para['numberOfTimeStep']
-    Tic = para['InitTeProfile']
-    T = np.reshape(Tic.values, (numberOfNode,1)) #numberOfNode rows with Tic values
-    T0 = np.reshape(Tic.values, (numberOfNode,1))
-    if para['NNmodel']==None:
-        alpha = para['alphas']
-        beta = para['betas']
-    else:
-        scale=para['scaling']
-        Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
-        gradT=np.gradient(np.reshape(T, (numberOfNode)),para['x'].values)
-        gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
-        alpha, beta = get_data_qless(para, para['x'], Tscaled, gradTscaled,para['ScaledZ'], \
-                                para['Scaledne'], para['ScaledKn'], int(para['NNmodel'].fcIn.in_features/6))
-                                                                        #size of the input vector
+    T_init = para['InitTeProfile']
+    T = np.reshape(T_init.values, (numberOfNode,1)) #numberOfNode rows with Tic values
+    T0 = np.reshape(T_init.values, (numberOfNode,1))
+    alpha_init = para['alphas']
+    beta_init = para['betas']
 
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
     alpha_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
@@ -124,9 +115,9 @@ def initialize(para):
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
     TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
-    alpha_prof[:,0] = alpha.reshape(1,-1)
-    beta_prof[:,0] = beta.reshape(1,-1)
-    cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha, 'beta':beta,
+    alpha_prof[:,0] = alpha_init.reshape(1,-1)
+    beta_prof[:,0] = beta_init.reshape(1,-1)
+    cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init,
              'F':F,'Jacobian':Jacobian,
              'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof,  }
     return cache
@@ -238,14 +229,16 @@ def newtonIteration(para, cache):
             log.loc[ts,'Residual'] = norm
             break
         cache = solveLinearSystem(para, cache)
-    print(' [','{:3.0f}'.format(ts), ']',
-          ' [','{:6.2f}'.format(ts*dt),']',
-          ' [','{:2.0f}'.format(n+1), ']',
-          ' [','{:8.2E}'.format(norm),']',
-          ' [','{:8.2E}'.format(np.min(cache['T'])),']',
-          ' [','{:8.2E}'.format(np.max(cache['T'])),']',
+    print('[{:3.0f}'.format(ts), ']',
+          '[{:6.2f}'.format(ts*dt),']',
+          '[{:2.0f}'.format(n+1), ']',
+          '[{:8.2E}'.format(norm),']',
+          '[{:8.2E}'.format(np.max(F)),']',
+          '[{:8.2E}'.format(np.max(cache['beta'])),']',
+          '[{:8.2E}'.format(np.min(cache['T'])),']',
+          '[{:8.2E}'.format(np.max(cache['T'])),']',
           #' [','{:8.2E}'.format(np.mean(cache['T'])),']')
-          ' [','{:8.2E}'.format(np.mean(cache['T']*(np.array([para['InitneProfile']]).T))),']')
+          '[{:8.2E}'.format(np.mean(cache['T']*(np.array([para['InitneProfile']]).T))),']')
     return cache
 
 
@@ -268,7 +261,7 @@ def solve(para):
     start = time.time()
     cache = initialize(para)
     numOfTimeStep = para['numberOfTimeStep']
-    print(' [Step] [Pysical Time] [Iteration] [Residue] [minT] [maxT] [E]')
+    print(' [Step] [Time] [Iter] [Residue] [vector F max] [Max beta] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
         cache = newtonIteration(para, cache)
