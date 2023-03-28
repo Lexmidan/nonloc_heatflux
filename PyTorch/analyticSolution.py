@@ -168,7 +168,7 @@ def plotDistribution(times, T_numerical, T_analytic):
 
 if __name__ == "__main__":
     global T
-    para = parameter.main()
+    para = parameter.main(None)
     analytics = solve(para)
     analytics = pp.preprocess(para, analytics)
     times = [2, 4, 6, 8, 10]

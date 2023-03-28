@@ -14,7 +14,9 @@ import numpy as np
 init_profile=pd.read_csv('./PyTorch/init_profile.csv', index_col=(0))
 #####
 init_profile=init_profile.iloc[::200,:]
+
 init_profile.reset_index(drop=True, inplace=True)
+#init_profile['Te']/=1.001**((init_profile['Te']))
 #init_profile['ne']/=init_profile['ne']*3/2
 #####
 
@@ -65,16 +67,20 @@ def main(model):
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
     
     # Boundary conditions
-    df.at['x=0 type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 3000
+    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
+    df.at['x=0 value'] = 0
     df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
     df.at['x=L value'] = 0
     
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']=np.linspace(1,8, len(init_profile))#np.linspace(1,8, len(init_profile)) #np.full(len(init_profile), 1)
-        df.at['betas']=np.linspace(2.5,0, len(init_profile))#np.linspace(2.5,0, len(init_profile)) #np.full(len(init_profile), 0)
+        df.at['alphas']= np.linspace(1,8, len(init_profile))
+                        #np.linspace(1,8, len(init_profile)) 
+                        #np.full(len(init_profile), 1)
+        df.at['betas'] = np.linspace(2.5,0, len(init_profile)) 
+                        #np.linspace(2.5,0, len(init_profile)) 
+                        #np.full(len(init_profile), 0)
     else:
         df.at['NNmodel']= model
         scale = df['scaling']
@@ -87,11 +93,11 @@ def main(model):
     # Solution
     df.at['numberOfTimeStep'] = 70#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['deltaTime'] =np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+    df.at['deltaTime'] = np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
                                (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
     print("dt =","%8.3E" % df['deltaTime'])
     df.at['maxIteration'] = 30
-    df.at['convergence'] = 1E1
+    df.at['convergence'] = 1E-3
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     return df
 

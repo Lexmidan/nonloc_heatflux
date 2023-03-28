@@ -235,6 +235,7 @@ def newtonIteration(para, cache):
           '[{:8.2E}'.format(norm),']',
           '[{:8.2E}'.format(np.max(F)),']',
           '[{:8.2E}'.format(np.max(cache['beta'])),']',
+          '[{:8.2E}'.format(np.max(cache['alpha'])),']',
           '[{:8.2E}'.format(np.min(cache['T'])),']',
           '[{:8.2E}'.format(np.max(cache['T'])),']',
           #' [','{:8.2E}'.format(np.mean(cache['T'])),']')
@@ -261,7 +262,7 @@ def solve(para):
     start = time.time()
     cache = initialize(para)
     numOfTimeStep = para['numberOfTimeStep']
-    print(' [Step] [Time] [Iter] [Residue] [vector F max] [Max beta] [Minimal T] [Maximal T] [meanEnergy]')
+    print(' [Step] [Time] [Iter] [Residue] [vector F max] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
         cache = newtonIteration(para, cache)
