@@ -54,19 +54,34 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, k):
     
     d2U = np.zeros((U.size, 1))
     for i in range(0, U.size):
-            
+        
+
+
         if i==0:
-            d2U[i] = (alphas[1]*k[1]/(betas[1]+1))*U[2]**(betas[1]+1)\
-                    -((alphas[0]*k[0]/(betas[0]+1))+(alphas[0]*k[1]/(betas[i]+1)))*U[1]**(betas[0]+1)\
-                    +(alphas[0]*k[0]/(betas[0]+1))*Ug1**(betas[0]+1)
+            d2U[i] = (alphas[1]*k[1]*U[1]**betas[1])*U[2]\
+                    -((alphas[0]*k[0]*U[0]**betas[0]) + (alphas[1]*k[1]*U[1]**betas[1]))*U[1]\
+                    +(alphas[0]*k[0]*U[0]**(betas[0]))*Ug1
         elif i==(U.size - 1):
-            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*Ug2**(betas[i]+1)\
-                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
-                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+            d2U[i] = (alphas[i]*k[i]*U[i]**betas[i])*Ug2\
+                    -((alphas[i-1]*k[i-1]*U[i-1]**betas[i-1]) + (alphas[i]*k[i]*U[i]**betas[i]))*U[i]\
+                    +(alphas[i-1]*k[i-1]*U[i-1]**(betas[i-1]))*U[i-1]
         else:
-            d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*U[i+1]**(betas[i]+1)\
-                    -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
-                    +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+            d2U[i] = (alphas[i]*k[i]*U[i]**betas[i])*U[i+1]\
+                    -((alphas[i-1]*k[i-1]*U[i-1]**betas[i-1]) + (alphas[i]*k[i]*U[i]**betas[i]))*U[i]\
+                    +(alphas[i-1]*k[i-1]*U[i-1]**(betas[i-1]))*U[i-1]
+            
+        # if i==0:
+        #     d2U[i] = (alphas[1]*k[1]/(betas[1]+1))*U[2]**(betas[1]+1)\
+        #             -((alphas[0]*k[0]/(betas[0]+1))+(alphas[1]*k[1]/(betas[i]+1)))*U[0]**(betas[0]+1)\
+        #             +(alphas[0]*k[0]/(betas[0]+1))*Ug1**(betas[0]+1)
+        # elif i==(U.size - 1):
+        #     d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*Ug2**(betas[i]+1)\
+        #             -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
+        #             +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
+        # else:
+        #     d2U[i] = (alphas[i]*k[i]/(betas[i]+1))*U[i+1]**(betas[i]+1)\
+        #             -((alphas[i-1]*k[i-1]/(betas[i-1]+1))+(alphas[i]*k[i]/(betas[i]+1)))*U[i]**(betas[i]+1)\
+        #             +(alphas[i-1]*k[i-1]/(betas[i-1]+1))*U[i-1]**(betas[i-1]+1)
             
     return d2U
 
