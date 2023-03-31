@@ -51,9 +51,9 @@ def thermalCouplePlot(results, positions):
     
     df = results.loc[positions,:].round(2)
     df = df.T
-    #df = df.add_prefix('x = ')
-    #df = df.add_suffix(' m')
-    ax = df.plot(grid=True)
+    df = df.add_prefix('x = ')
+    df = df.add_suffix(' m')
+    ax = df.plot(grid=True, legend=False)
     ax.set_xlabel("Time, s")
     ax.set_ylabel("Temperature, K")
 

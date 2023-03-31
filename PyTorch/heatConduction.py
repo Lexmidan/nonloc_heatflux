@@ -305,6 +305,6 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
     return alphas, betas
 
-#fig1, ax1 = plt.subplots(figsize=(6,3))
+fig1, ax1 = plt.subplots(figsize=(6,3))
 
 

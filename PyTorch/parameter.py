@@ -12,11 +12,13 @@ import HeatfluxModel as hfm
 import numpy as np
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
 init_profile=pd.read_csv('./PyTorch/init_profile.csv', index_col=(0))
-#####
+####
 init_profile=init_profile.iloc[::200,:]
-
 init_profile.reset_index(drop=True, inplace=True)
+
 #init_profile['Te']/=1.001**((init_profile['Te']))
+#init_profile['Te']=1000
+#init_profile['Te'].iloc[100:180]=1000
 #init_profile['ne']/=init_profile['ne']*3/2
 #####
 
@@ -75,12 +77,9 @@ def main(model):
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']= np.linspace(1,8, len(init_profile))
-                        #np.linspace(1,8, len(init_profile)) 
-                        #np.full(len(init_profile), 1)
-        df.at['betas'] = np.linspace(2.5,0, len(init_profile)) 
-                        #np.linspace(2.5,0, len(init_profile)) 
-                        #np.full(len(init_profile), 0)
+        df.at['alphas']= np.linspace(1,2, len(init_profile))
+        df.at['betas'] = np.linspace(2.5,2.5, len(init_profile)) 
+
     else:
         df.at['NNmodel']= model
         scale = df['scaling']
@@ -91,13 +90,13 @@ def main(model):
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/6))
 
     # Solution
-    df.at['numberOfTimeStep'] = 70#400
+    df.at['numberOfTimeStep'] = 700#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['deltaTime'] = np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+    df.at['deltaTime'] = 150*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
                                (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
     print("dt =","%8.3E" % df['deltaTime'])
     df.at['maxIteration'] = 30
-    df.at['convergence'] = 1E-3
+    df.at['convergence'] = 1
     df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
     return df
 
