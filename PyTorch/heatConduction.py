@@ -72,15 +72,25 @@ def assemble(para, cache, alphas, betas):
             Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
                             *T[i]**betas[i]  
         # Interior nodes
+
         else:   #!!! \alpha_{i+1/2} := alpha[i]
-            Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
-            Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
-                           *T[i]**betas[i]
+            Jacobian[i][i+1] = (1/dx**2)*.5*(alphas[i+1]*k[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
+                                           -(betas[i+1]+1)*alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] - alphas[i]*k[i]*T[i]**betas[i])
+            Jacobian[i][i-1] = (1/dx**2)*.5*(betas[i-1]*k[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
+                                           -(betas[i-1]+1)*alphas[i-1]*k[i-1]*T[i-1]**betas[i-1] - alphas[i]*k[i]*T[i]**betas[i])
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] + alphas[i-1]*k[i-1]*T[i-1]**betas[i-1]\
+                            +2*(betas[i]+1)*alphas[i]*k[i]*T[i]**betas[i] - (betas[i]*alphas[i]*k[i]*T[i]**(betas[i]-1))*(T[i-1]+T[i+1]))
+
+        # else:   #!!! \alpha_{i+1/2} := alpha[i]
+        #     Jacobian[i][i+1] = -(1/dx**2)*(k[i+1] * alphas[i+1]*T[i+1]**betas[i+1])
+        #     Jacobian[i][i-1] = -(1/dx**2)*(k[i-1] * alphas[i-1]*T[i-1]**betas[i-1])
+        #     Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*(k[i-1]*alphas[i-1] + k[i]* alphas[i])\
+        #                    *T[i]**betas[i]
+
 
     # Calculate F (right hand side vector)
     d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k) #d2T/dx2
-    F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt - d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
+    F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
 
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
@@ -141,6 +151,7 @@ def solveLinearSystem(para, cache):
     dT = np.linalg.solve(A, B)
     T = cache['T']
     T = T-dT * relax       #T(j+1)=T(j)+JI``(F)
+    T[np.where(T<=0)]=10
     cache['T']=T
     cache['dT'] = dT
     return cache
@@ -223,17 +234,18 @@ def newtonIteration(para, cache):
         cache = assemble(para, cache, alphas, betas)
         F = cache['F']
         norm = np.linalg.norm(F)
-        if norm < convergence:
+        if n==0: slump = np.copy(norm)
+        if norm/np.linalg.norm(cache['T']) < convergence:
             log.loc[ts,'PhysicalTime'] = dt*ts
             log.loc[ts,'Iteration'] = n+1
             log.loc[ts,'Residual'] = norm
             break
         cache = solveLinearSystem(para, cache)
     print('[{:3.0f}'.format(ts), ']',
-          '[{:6.2f}'.format(ts*dt),']',
+          '[{:6.2E}'.format(ts*dt),']',
           '[{:2.0f}'.format(n+1), ']',
-          '[{:8.2E}'.format(norm),']',
-          '[{:8.2E}'.format(np.max(F)),']',
+          '[{:8.2E}'.format(norm/np.linalg.norm(cache['T'])),']',
+          '[{:8.2E}'.format(norm/slump),']',
           '[{:8.2E}'.format(np.max(cache['beta'])),']',
           '[{:8.2E}'.format(np.max(cache['alpha'])),']',
           '[{:8.2E}'.format(np.min(cache['T'])),']',
@@ -262,7 +274,7 @@ def solve(para):
     start = time.time()
     cache = initialize(para)
     numOfTimeStep = para['numberOfTimeStep']
-    print(' [Step] [Time] [Iter] [Residue] [vector F max] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
+    print(' [Step] [Time] [Iter] [Residue] [Newton outcome] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
         cache = newtonIteration(para, cache)
@@ -305,6 +317,6 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
     return alphas, betas
 
-fig1, ax1 = plt.subplots(figsize=(6,3))
+#fig1, ax1 = plt.subplots(figsize=(6,3))
 
 

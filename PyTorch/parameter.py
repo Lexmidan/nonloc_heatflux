@@ -77,8 +77,8 @@ def main(model):
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']= np.linspace(1,2, len(init_profile))
-        df.at['betas'] = np.linspace(2.5,2.5, len(init_profile)) 
+        df.at['alphas']= np.linspace(8,8, len(init_profile))
+        df.at['betas'] = np.linspace(10,2.5, len(init_profile)) 
 
     else:
         df.at['NNmodel']= model
@@ -90,14 +90,14 @@ def main(model):
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/6))
 
     # Solution
-    df.at['numberOfTimeStep'] = 700#400
+    df.at['numberOfTimeStep'] = 80#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['deltaTime'] = 150*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+    df.at['deltaTime'] = 1e1*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
                                (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
     print("dt =","%8.3E" % df['deltaTime'])
-    df.at['maxIteration'] = 30
-    df.at['convergence'] = 1
-    df.at['relaxation'] = 1# value in [0-1] Very sensitive!!!
+    df.at['maxIteration'] = 8
+    df.at['convergence'] = 1e-1
+    df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
     return df
 
 
