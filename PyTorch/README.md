@@ -18,3 +18,6 @@ All parameters of the problem, such as number of used profiles points, boundary 
 1. PyTorch Lightning Tutorial, https://becominghuman.ai/pytorch-lightning-tutorial-1-getting-started-5f82e06503f6
 2. Introduction to PyTorch Lightning, https://pytorch-lightning.readthedocs.io/en/stable/
 3. Regression using PyTorch Lightning, "Bike Share Regression PyTorch Lightning.ipynb", https://github.com/shotleft/how-to-python.git
+
+# !!!
+The structure of the modules solving the time evolution of temperature distribution are based on github heatConduction repository published by https://github.com/rickfu415
