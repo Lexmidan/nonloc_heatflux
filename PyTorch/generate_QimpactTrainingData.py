@@ -6,7 +6,7 @@ import sys
 
 #!!!
 def impdata(filename):
-    path = f'/PyTorch/gd-profiles/{filename}'
+    path = f'./PyTorch/gd-profiles/{filename}'
     return path
 #!!!
 
@@ -19,7 +19,7 @@ x_Qimpact/=1e4
 
 # In order to include Kn
 x_Qc7bBGK, Qc7bBGK, Knx = np.loadtxt(impdata('Q_gdhohlraum_cm_10ps_c7b-bgk-Wcm2-clogCHIC.txt'),\
-                                     comments='#', delimiter=', ', usecols=(0, 8, 6), unpack=True)
+                                     comments='#', delimiter=',', usecols=(0, 8, 6), unpack=True)
 
 
 def getsub(f, x, xref):
@@ -54,12 +54,13 @@ def get_data(x, T, gradT, Z, n, Kn, Qimp, width, step, T_mean, T_std):
         if ind+2*rad>=len(x)+1:
             break    
         
+        
         else:
-            datapoint=np.append(datapoint, T[ind:ind+2*rad:step]) #append all Te in xmin-xmax
-            datapoint=np.append(datapoint, gradT[ind:ind+2*rad:step]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Z[ind:ind+2*rad:step]) #append all Zbar in xmin-xmax
-            datapoint=np.append(datapoint, n[ind:ind+2*rad:step]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Kn[ind:ind+2*rad:step]) #append all Knudsen number in xmin-xmax
+            datapoint=np.append(datapoint, T.iloc[ind:ind+2*rad:step]) #append all Te in xmin-xmax
+            datapoint=np.append(datapoint, gradT.iloc[ind:ind+2*rad:step]) #append all gradTe in xmin-xmax
+            datapoint=np.append(datapoint, Z.iloc[ind:ind+2*rad:step]) #append all Zbar in xmin-xmax
+            datapoint=np.append(datapoint, n.iloc[ind:ind+2*rad:step]) #append all gradTe in xmin-xmax
+            datapoint=np.append(datapoint, Kn.iloc[ind:ind+2*rad:step]) #append all Knudsen number in xmin-xmax
             x_c=np.append(x_c, x[rad+ind])                     #will be used as index column for Qdata
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
             datapoint=np.append(datapoint, (x[ind:ind+2*rad:step] - x[rad+ind]) / (max(x) - min(x))) #append all point distances in xmin-xmax            

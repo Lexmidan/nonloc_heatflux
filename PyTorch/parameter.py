@@ -13,9 +13,10 @@ import numpy as np
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
 init_profile=pd.read_csv('./PyTorch/init_profile.csv', index_col=(0))
 ####
-init_profile=init_profile.iloc[::200,:]
+init_profile=init_profile.iloc[::100,:]
 init_profile.reset_index(drop=True, inplace=True)
-
+precal_alpha=np.loadtxt('./PyTorch/NN/precalculated_alpha.csv', delimiter=",", dtype = float)
+precal_beta=np.loadtxt('./PyTorch/NN/precalculated_beta.csv',delimiter=",", dtype = float)
 #init_profile['Te']/=1.001**((init_profile['Te']))
 #init_profile['Te']=1000
 #init_profile['Te'].iloc[100:180]=1000
@@ -77,25 +78,26 @@ def main(model):
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']= np.linspace(1,1, len(init_profile))
-        df.at['betas'] = np.linspace(.5,0, len(init_profile)) 
+        df.at['alphas']= np.linspace(1,1, len(init_profile))#precal_alpha#np.linspace(1,8, len(init_profile))
+        df.at['betas'] = np.linspace(0,0, len(init_profile)) #precal_beta#np.linspace(2.5,2.5, len(init_profile)) 
+   
 
     else:
         df.at['NNmodel']= model
         scale = df['scaling']
-        Tscaled = (np.reshape(df['InitTeProfile'], (df['numberOfNode']))-scale['T'].loc['mean'])/scale['T'].loc['std']
-        gradT = np.gradient(np.reshape(df['InitTeProfile'], (df['numberOfNode'])),df['x'].values)
+        Tscaled = pd.DataFrame((np.reshape(df['InitTeProfile'], (df['numberOfNode']))-scale['T'].loc['mean'])/scale['T'].loc['std'])
+        gradT = pd.DataFrame(np.gradient(np.reshape(df['InitTeProfile'], (df['numberOfNode'])),df['x'].values))
         gradTscaled = (gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
-        df.at['alphas'], df.at['betas'] = hc.get_data_qless(df, df['x'], Tscaled, gradTscaled,df['ScaledZ'], \
+        df.at['alphas'], df.at['betas'] = hc.get_data_qless(df['NNmodel'], df['x'], Tscaled, gradTscaled,df['ScaledZ'], \
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/6))
 
     # Solution
-    df.at['numberOfTimeStep'] = 280#400
+    df.at['numberOfTimeStep'] = 100#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['deltaTime'] = 1e8*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+    df.at['deltaTime'] = 1e14*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
                                (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
     print("dt =","%8.3E" % df['deltaTime'])
-    df.at['maxIteration'] = 16
+    df.at['maxIteration'] = 10
     df.at['convergence'] = 1e-1
     df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
     return df

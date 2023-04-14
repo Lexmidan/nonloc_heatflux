@@ -207,8 +207,8 @@ def newtonIteration(para, cache):
     Knscaled=para['ScaledKn']
     gradT=np.gradient(np.reshape(T, (numberOfNode)),x.values)
     #initially T had form of [[1],[2],[3]...] not [1,2,3]
-    Tscaled=(np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std']
-    gradTscaled=(gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
+    Tscaled=pd.DataFrame((np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std'])
+    gradTscaled=pd.DataFrame((gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std'])
     """
     Parameters given by NN:
     """    
@@ -216,10 +216,10 @@ def newtonIteration(para, cache):
         alphas=para['alphas']
         betas=para['betas']
     else:
-        alphas, betas = get_data_qless(para, para['x'], Tscaled, gradTscaled,Zscaled, \
+        alphas, betas = get_data_qless(para['NNmodel'], para['x'], Tscaled, gradTscaled,Zscaled, \
                                         nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6))
                                                                                 #size of the input vector
-        params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
+        #params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     
     
     #interpolation needed in order to 'place' coefficients to the center of the cell
@@ -287,28 +287,29 @@ def solve(para):
     print('[Cost] CPU time spent','%.3f'%runtime,'s')
     return TProfile, cache, alpha_prof, betas_prof
 
-def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):  
-    numFields = 5 #T, gradT, Z, n, Kn
+def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):  
+    numFields = 6 #T, gradT, Z, n, Kn
     Qdata=np.empty((0,numFields*lng), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta"
     for ind, _ in enumerate(x):  #x_min=x[ind], x_max=x[ind+2*rad], x_c=x[ind+rad]
         datapoint=np.array([])          
         if ind+lng>=len(x)+1:
             break    
         else:
-            datapoint=np.append(datapoint, T[ind:ind+lng]) #append all Te in xmin-xmax
-            datapoint=np.append(datapoint, gradT[ind:ind+lng]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Z[ind:ind+lng]) #append all Zbar in xmin-xmax
-            datapoint=np.append(datapoint, n[ind:ind+lng]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Kn[ind:ind+lng]) #append all Knudsen number in xmin-xmax
+            datapoint=np.append(datapoint, T.iloc[ind:ind+lng]) #append all Te in xmin-xmax
+            datapoint=np.append(datapoint, gradT.iloc[ind:ind+lng]) #append all gradTe in xmin-xmax
+            datapoint=np.append(datapoint, Z.iloc[ind:ind+lng]) #append all Zbar in xmin-xmax
+            datapoint=np.append(datapoint, n.iloc[ind:ind+lng]) #append all gradTe in xmin-xmax
+            datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) #append all Knudsen number in xmin-xmax
+            datapoint=np.append(datapoint, x[ind:ind+lng])
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
             Qdata=np.append(Qdata,[datapoint], axis=0)
             # if ind%5000==0:
             #     print(f"We're done with {ind}/{len(x)-lng+1} points") 
-    Qdata =torch.tensor(np.c_[Qdata, np.empty([len(Qdata), lng])]).float()
-    heatflux = para['NNmodel'].heatflux_model(Qdata.float()).detach().numpy()
+    #Qdata =torch.tensor(np.c_[Qdata, np.empty([len(Qdata), lng])]).float()
+    heatflux = model.heatflux_model(torch.tensor(Qdata).float()).detach().numpy()
     ax1.plot(heatflux)
-    alphas=para['NNmodel'].alpha_model(Qdata.float()).detach().numpy()
-    betas=para['NNmodel'].beta_model(Qdata.float()).detach().numpy()
+    alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy()
+    betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
     for i in range(int((len(x)-len(alphas))/2)):              
         alphas = np.append(alphas[0], alphas)
         betas = np.append(betas[0], betas)
@@ -317,6 +318,6 @@ def get_data_qless(para, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
     return alphas, betas
 
-#fig1, ax1 = plt.subplots(figsize=(6,3))
+fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
