@@ -2,10 +2,10 @@
 ## Generate the data neseccary for neural network to train
 We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 105`
 
-'NN-heatflux.ipynb' and 'NN_training.py' contain training part of the neural network, whereas 'HeatFluxModel.py' and 'HeatFluxData.py' contain the definiotion of the NN itself and data preparation respectevely
+`NN-heatflux.ipynb` and `NN_training.py` contain training part of the neural network, whereas `HeatFluxModel.py` and `HeatFluxData.py` contain the definiotion of the NN itself and data preparation respectevely
 
 # Time evolution of the nonlocal problem 
-The script responsible for time evolution problem can be reached either via 'time-evolv-heatflux.ipynb' notebook, or can be started directly by running 'parameter.py' file
+The script responsible for time evolution problem can be reached either via 'time-evolv-heatflux.ipynb' notebook, or can be started directly by running `parameter.py` file
 
 All parameters of the problem, such as number of used profiles points, boundary conditions, definition of parameters $\alpha$ and $\beta$, number of timesteps and its magnitude $dt$ are contained and may be modified in `parameter.py` file.
 
@@ -14,10 +14,6 @@ All parameters of the problem, such as number of used profiles points, boundary 
 
 # PyTorch tutorials for NTH-ML
 
-In order to work in Prague use
-`ssh -L 8888:localhost:8888 q3b.fjfi.cvut.cz`
-
-We used local data that has been generate in `../students/bogdale/NN-examples/` via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 105`
 
 1. PyTorch Lightning Tutorial, https://becominghuman.ai/pytorch-lightning-tutorial-1-getting-started-5f82e06503f6
 2. Introduction to PyTorch Lightning, https://pytorch-lightning.readthedocs.io/en/stable/
