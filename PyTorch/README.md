@@ -1,7 +1,9 @@
 # This folder contains the key files for solving the non-local transport problem
 ## Generate the data neseccary for neural network to train
 We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 105`
+
 However, I forgot to include these data to `gitignore.git` and have accidentally uploaded them to this repository
+
 `NN-heatflux.ipynb` and `NN_training.py` contain training part of the neural network, whereas `HeatFluxModel.py` and `HeatFluxData.py` contain the definiotion of the NN itself and data preparation respectevely
 
 # Time evolution of the nonlocal problem 
