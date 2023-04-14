@@ -20,4 +20,4 @@ All parameters of the problem, such as number of used profiles points, boundary 
 3. Regression using PyTorch Lightning, "Bike Share Regression PyTorch Lightning.ipynb", https://github.com/shotleft/how-to-python.git
 
 # !!!
-The structure of the modules solving the time evolution of temperature distribution are based on github heatConduction repository published by https://github.com/rickfu415
+The structure of the modules solving the time evolution of temperature distribution (`heatConduction.py`, `postprocessing.py`,  `parameter.py`)  are based on github heatConduction repository published by https://github.com/rickfu415
