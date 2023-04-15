@@ -11,12 +11,12 @@ import pandas as pd
 import HeatfluxModel as hfm
 import numpy as np
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
-init_profile=pd.read_csv('./PyTorch/init_profile.csv', index_col=(0))
+init_profile=pd.read_csv('./Data/init_profile.csv', index_col=(0))
 ####
 init_profile=init_profile.iloc[::100,:]
 init_profile.reset_index(drop=True, inplace=True)
-precal_alpha=np.loadtxt('./PyTorch/NN/precalculated_alpha.csv', delimiter=",", dtype = float)
-precal_beta=np.loadtxt('./PyTorch/NN/precalculated_beta.csv',delimiter=",", dtype = float)
+precal_alpha=np.loadtxt('./NN/precalculated_alpha.csv', delimiter=",", dtype = float)
+precal_beta=np.loadtxt('./NN/precalculated_beta.csv',delimiter=",", dtype = float)
 #init_profile['Te']/=1.001**((init_profile['Te']))
 #init_profile['Te']=1000
 #init_profile['Te'].iloc[100:180]=1000
@@ -64,7 +64,7 @@ def main(model):
     df.at['InitKnProfile'] = init_profile['Kn']
 
     #Scaling
-    df.at['scaling']=pd.read_csv('./PyTorch/data_scaling.csv', index_col=(0))
+    df.at['scaling']=pd.read_csv('./Data/data_scaling.csv', index_col=(0))
     df.at['Scaledne'] = (init_profile['ne']-df.at['scaling']['n'].loc['mean'])/df.at['scaling']['n'].loc['std']
     df.at['ScaledZ'] = (init_profile['Zbar']-df.at['scaling']['Z'].loc['mean'])/df.at['scaling']['Z'].loc['std']
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
@@ -89,12 +89,12 @@ def main(model):
         gradT = pd.DataFrame(np.gradient(np.reshape(df['InitTeProfile'], (df['numberOfNode'])),df['x'].values))
         gradTscaled = (gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
         df.at['alphas'], df.at['betas'] = hc.get_data_qless(df['NNmodel'], df['x'], Tscaled, gradTscaled,df['ScaledZ'], \
-                                df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/6))
-
+                                df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/4))
+                                                                    #length of the input vector
     # Solution
     df.at['numberOfTimeStep'] = 100#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['deltaTime'] = 1e14*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+    df.at['deltaTime'] = 1e1*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
                                (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
     print("dt =","%8.3E" % df['deltaTime'])
     df.at['maxIteration'] = 10
@@ -103,18 +103,22 @@ def main(model):
     return df
 
 
-#
-# if __name__ == "__main__":
-#     parameter = main(model)
-#     results, cache, alphas, betas = hc.solve(parameter)
-#     T = pp.preprocess(parameter, results)
-#     pp.evolutionField(T)
-#     #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
-#     positions = T.index[::int(len(init_profile['x'])*3e-2)]
-#     pp.thermalCouplePlot(T, positions)
-#     times = T.columns[::int(len(T.columns)/10)][1:4]
-#         #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
-#     pp.temperatureDistribution(T, times)
+
+if __name__ == "__main__":
+    
+    #model=NN_training.train_model(100) #argument is the number of epochs
+    model=None 
+
+    parameter = main(model)
+    results, cache, alphas, betas = hc.solve(parameter)
+    T = pp.preprocess(parameter, results)
+    pp.evolutionField(T)
+    #np.linspace(parameter['x'][0], parameter['x'].iloc[-1], 8 )   #0-L  TODO: global variable?
+    positions = T.index[::int(len(init_profile['x'])*3e-2)]
+    pp.thermalCouplePlot(T, positions)
+    times = T.columns[::int(len(T.columns)/10)][1:4]
+        #'numberOfTimeStep'*'deltaTime'  TODO: global variable?
+    pp.temperatureDistribution(T, times)
     
     
     

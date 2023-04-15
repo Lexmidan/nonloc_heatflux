@@ -217,7 +217,7 @@ def newtonIteration(para, cache):
         betas=para['betas']
     else:
         alphas, betas = get_data_qless(para['NNmodel'], para['x'], Tscaled, gradTscaled,Zscaled, \
-                                        nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/6))
+                                        nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/4))
                                                                                 #size of the input vector
         #params=pd.DataFrame([alphas,betas], index=['alpha', 'beta']).T
     
@@ -288,7 +288,7 @@ def solve(para):
     return TProfile, cache, alpha_prof, betas_prof
 
 def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):  
-    numFields = 6 #T, gradT, Z, n, Kn
+    numFields = 4 #T, gradT, Z, n, Kn
     Qdata=np.empty((0,numFields*lng), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta"
     for ind, _ in enumerate(x):  #x_min=x[ind], x_max=x[ind+2*rad], x_c=x[ind+rad]
         datapoint=np.array([])          
@@ -299,8 +299,8 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):
             datapoint=np.append(datapoint, gradT.iloc[ind:ind+lng]) #append all gradTe in xmin-xmax
             datapoint=np.append(datapoint, Z.iloc[ind:ind+lng]) #append all Zbar in xmin-xmax
             datapoint=np.append(datapoint, n.iloc[ind:ind+lng]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) #append all Knudsen number in xmin-xmax
-            datapoint=np.append(datapoint, x[ind:ind+lng])
+            #datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) #append all Knudsen number in xmin-xmax
+            #datapoint=np.append(datapoint, x[ind:ind+lng])
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
             Qdata=np.append(Qdata,[datapoint], axis=0)
             # if ind%5000==0:

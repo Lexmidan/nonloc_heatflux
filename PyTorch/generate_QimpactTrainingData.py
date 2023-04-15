@@ -114,7 +114,7 @@ def get_data(x, T, gradT, Z, n, Kn, Qimp, width, step, T_mean, T_std):
 # Transform data to match given spatial interval 
 # `python3 generate_QimpactTrainingData.py 100 0.01 0.19 40000 110`
 # Default values spanning the whole c7b spatial domain and number of points
-xmin = 0.01; xmax = 0.19; Npoints = 40000; step = 110
+xmin = 0.01; xmax = 0.19; Npoints = 40000; step = 100
 # Default kernel size is 100 microns
 width = 100e-4
 if (len(sys.argv) > 1):
@@ -127,7 +127,7 @@ if (len(sys.argv) > 4):
     Npoints = int(sys.argv[4])
 if (len(sys.argv) > 5):
     step = int(sys.argv[5])
-print(f'width={width:.1e}, xmin={xmin:.1e}, xmax={xmax:.1e}, Npoints={Npoints}')
+print(f'width={width:.1e}, xmin={xmin:.1e}, xmax={xmax:.1e}, Npoints={Npoints}, step={step}')
 
 xref = np.linspace(xmin, xmax, Npoints)
 Te = getsub(Te, x_Te, xref)
@@ -145,7 +145,7 @@ gradTe=np.gradient(Te, xref)
 ##initial profile later used in heat conduction
 
 init_profile=pd.DataFrame([xref,Te,gradTe,Zbar,ne,absKnx], index=['x','Te', 'gradTe', 'Zbar', 'ne', 'Kn']).T
-path = './'
+path = './PyTorch/Data'
 # Scale the input data
 data_scaling=pd.DataFrame(index=['mean', 'std'], columns=['T', 'gradT', 'Z', 'n', 'Kn', 'Q', 'beta']) #will contain mean values and std
 scaled_data=pd.DataFrame([Te, gradTe, Zbar, ne, absKnx, Qimpact], index=['T', 'gradT', 'Z', 'n', 'Kn', 'Q']).T 
