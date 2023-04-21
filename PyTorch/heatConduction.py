@@ -10,6 +10,7 @@ import utility
 import time
 import torch
 from matplotlib import pyplot as plt
+import scipy
 def assemble(para, cache, alphas, betas, heatflux):
     """ Assemble linear system Jacobian * dx = F
     
@@ -46,7 +47,7 @@ def assemble(para, cache, alphas, betas, heatflux):
     T = cache['T']; T0 = cache['T0']        #let T=T[i,j] then T0=T[i, j-1]
     F = cache['F']; Jacobian = cache['Jacobian']
     
-    dt = para['Time_multiplier']*np.min(3/2*ne*Kb*dx**2/(k*alphas*T[:,0]**2.5))
+    dt = cache['dt']    
     '''    
     Loop over grid
     '''
@@ -129,8 +130,10 @@ def initialize(para):
     TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
     alpha_prof[:,0] = alpha_init.reshape(1,-1)
     beta_prof[:,0] = beta_init.reshape(1,-1)
+    times=np.array([0])
+    dt=Exception("dt wasn't calculated")
     cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init,
-             'F':F,'Jacobian':Jacobian, 'time':0,
+             'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt,
              'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof}
     return cache
 
@@ -158,7 +161,28 @@ def solveLinearSystem(para, cache):
     cache['dT'] = dT
     return cache
 
-
+def storeUpdateResult(cache):
+    """ Store results
+    Update T0
+    Store temperaure results into a dataframe and 
+    save it in the cache.
+    """
+    
+    timeStep = cache['ts']
+    TProfile = cache['TProfile']
+    alpha_prof = cache['alpha_prof']     #all profiles of params
+    beta_prof = cache['beta_prof']   
+    heatflux_prof = cache['heatflux_prof']    
+    alpha = cache['alpha']      #current profile
+    beta = cache['beta']
+    heatflux = cache['heatflux']
+    T = cache['T']
+    cache['T0'] = T.copy()
+    TProfile[:,timeStep] = T.reshape(1,-1)
+    alpha_prof[:,timeStep] = alpha.reshape(1,-1)
+    beta_prof[:,timeStep] = beta.reshape(1,-1)
+    heatflux_prof[:,timeStep] = heatflux.reshape(1,-1)
+    return cache
 
 def newtonIteration(para, cache):
     """ Newton's Iteration for Equation System
@@ -198,6 +222,7 @@ def newtonIteration(para, cache):
     if para['NNmodel']==None:
         alphas=para['alphas']
         betas=para['betas']
+        heatflux = para['heatflux']
     else:
         alphas, betas, heatflux = get_data_qless(para['NNmodel'], para['x'], Tscaled, gradTscaled,Zscaled, \
                                         nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/4))
@@ -208,9 +233,10 @@ def newtonIteration(para, cache):
     alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
     betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     
-    dt = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/\
+    cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/\
                                (para['conductivity']*para['alphas']*T[:,0]**2.5))
-    cache['time']+=dt
+    cache['time']+=cache['dt']
+    cache['times'] = np.append(cache['times'],cache['time'])
     log = cache['Log']
     ts = cache['ts']
     for n in range(maxIteration):
@@ -219,7 +245,7 @@ def newtonIteration(para, cache):
         norm = np.linalg.norm(F)
         if n==0: slump = np.copy(norm)
         if norm/np.linalg.norm(cache['T']) < convergence:
-            log.loc[ts,'PhysicalTime'] = dt*ts
+            log.loc[ts,'PhysicalTime'] = cache['time']
             log.loc[ts,'Iteration'] = n+1
             log.loc[ts,'Residual'] = norm
             break
@@ -227,14 +253,14 @@ def newtonIteration(para, cache):
     print('[{:3.0f}'.format(ts), ']',
           '[{:6.2E}'.format(cache['time']),']',
           '[{:2.0f}'.format(n+1), ']',
-          '[{:8.2E}'.format(norm/np.linalg.norm(T)),']',
+          '[{:8.2E}'.format(norm/np.mean(1.5*(np.array([para['InitneProfile']]).T)*para['boltzman']*T)),']',
           '[{:8.2E}'.format(norm/slump),']',
           '[{:8.2E}'.format(np.max(cache['beta'])),']',
           '[{:8.2E}'.format(np.max(cache['alpha'])),']',
           '[{:8.2E}'.format(np.min(T)),']',
           '[{:8.2E}'.format(np.max(T)),']',
           #' [','{:8.2E}'.format(np.mean(cache['T'])),']')
-          '[{:8.2E}'.format(np.mean(T*(np.array([para['InitneProfile']]).T))),']')
+          '[{:8.2E}'.format(np.mean(1.5*para['boltzman']*T*(np.array([para['InitneProfile']]).T))),']')
     return cache
 
 
@@ -261,12 +287,10 @@ def solve(para):
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
         cache = newtonIteration(para, cache)
-        T = cache['T']
-        cache['T0'] = T.copy()
-        #cache = storeUpdateResult(cache)
-    TProfile = cache['TProfile']
-    alpha_prof = cache['alpha_prof']
-    betas_prof = cache['beta_prof']
+        cache = storeUpdateResult(cache)
+    TProfile = pd.DataFrame(cache['TProfile'], columns=cache['times'],index=para['x'])
+    alpha_prof = pd.DataFrame(cache['alpha_prof'], columns=cache['times'],index=para['x'])
+    betas_prof = pd.DataFrame(cache['beta_prof'], columns=cache['times'],index=para['x'])
     heatflux_prof = cache['heatflux_prof']
     runtime = time.time() - start
     print('[Cost] CPU time spent','%.3f'%runtime,'s')
@@ -295,6 +319,9 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):
     alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy()
     betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
 
+    alphas=scipy.ndimage.gaussian_filter1d(alphas,1)
+    betas = scipy.ndimage.gaussian_filter1d(betas,1)
+
     for i in range(int((len(x)-len(alphas))/2)):              
         alphas = np.append(alphas[0], alphas)
         betas = np.append(betas[0], betas)
@@ -305,7 +332,7 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):
         betas = np.append(betas, betas[-1])
         heatflux = np.append(heatflux[0], heatflux)
 
-    return alphas, betas, heatflux
+    return alphas,betas,heatflux#scipy.ndimage.gaussian_filter1d(alphas,3), scipy.ndimage.gaussian_filter1d(betas,3), heatflux
 
 #fig1, ax1 = plt.subplots(figsize=(6,3))
 

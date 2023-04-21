@@ -45,7 +45,7 @@ def main(model):
     df.at['CPU'] = 1
     
     # Grid
-    df.at['Time_multiplier'] = 1e0
+    df.at['Time_multiplier'] = 1e4
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x']
@@ -70,8 +70,8 @@ def main(model):
     df.at['ScaledKn'] = (init_profile['Kn']-df.at['scaling']['Kn'].loc['mean'])/df.at['scaling']['Kn'].loc['std']
     
     # Boundary conditions
-    df.at['x=0 type'] = 'fixedTemperature' #'heatFlux' or 'fixedTemperature'
-    df.at['x=0 value'] = 2550.1904934791014
+    df.at['x=0 type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
+    df.at['x=0 value'] = 0
     df.at['x=L type'] = 'heatFlux' #'heatFlux' or 'fixedTemperature'
     df.at['x=L value'] = 0
     
@@ -79,7 +79,8 @@ def main(model):
     if model==None:
         df.at['NNmodel']= None
         df.at['alphas']= np.linspace(1,1, len(init_profile))#precal_alpha#np.linspace(1,8, len(init_profile))
-        df.at['betas'] = np.linspace(0,0, len(init_profile)) #precal_beta#np.linspace(2.5,2.5, len(init_profile)) 
+        df.at['betas'] = np.linspace(2.5,2.5, len(init_profile))  #precal_beta#np.linspace(2.5,2.5, len(init_profile)) 
+        df.at['heatflux']=np.linspace(0,0, len(init_profile))
    
 
     else:
@@ -92,11 +93,12 @@ def main(model):
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/4))
                                                                     #length of the input vector
     # Solution
-    df.at['numberOfTimeStep'] = 60#400
+    df.at['numberOfTimeStep'] = 100#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
     df.at['maxIteration'] = 32
     df.at['convergence'] = 1e-1
     df.at['relaxation'] =0.95# value in [0-1] Very sensitive!!!
+
     return df
 
 

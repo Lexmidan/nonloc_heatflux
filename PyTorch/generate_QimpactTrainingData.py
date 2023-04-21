@@ -63,7 +63,7 @@ def get_data(x, T, gradT, Z, n, Kn, Qimp, width, step, T_mean, T_std):
             datapoint=np.append(datapoint, Kn.iloc[ind:ind+2*rad:step]) #append all Knudsen number in xmin-xmax
             x_c=np.append(x_c, x[rad+ind])                     #will be used as index column for Qdata
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
-            datapoint=np.append(datapoint, (x[ind:ind+2*rad:step] - x[rad+ind]) / (max(x) - min(x))) #append all point distances in xmin-xmax            
+            datapoint=np.append(datapoint, (x[ind:ind+2*rad:step])) #append all point distances in xmin-xmax            
             datapoint=np.append(datapoint, Qimp[ind+rad]) #append Qimpact in x_c
             # Find the self-similar nonlinearity of temperature profile given by
             # T = c * (1 - b * x^2)^(1/beta),
@@ -116,7 +116,7 @@ def get_data(x, T, gradT, Z, n, Kn, Qimp, width, step, T_mean, T_std):
 # Default values spanning the whole c7b spatial domain and number of points
 xmin = 0.01; xmax = 0.19; Npoints = 40000; step = 100
 # Default kernel size is 100 microns
-width = 100e-4
+width = 300e-4
 if (len(sys.argv) > 1):
     width = float(sys.argv[1]) * 1e-4
 if (len(sys.argv) > 2):

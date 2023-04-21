@@ -77,7 +77,7 @@ def temperatureDistribution(results, times):
 
 
 
-def preprocess(parameter, results):
+def preprocess(parameter, results, time):
     """ Pre-Process results
     
     To convert numpy array into pandas DataFrame for easier
@@ -95,8 +95,6 @@ def preprocess(parameter, results):
     length = parameter['length']
     numberOfNode = parameter['numberOfNode']
     numOfTimeStep = parameter['numberOfTimeStep']
-    deltaTime = parameter['deltaTime']
-    time = deltaTime * numOfTimeStep
     grids = np.linspace(0, length, numberOfNode)#.round(5)
     times = np.linspace(0, time, numOfTimeStep+1)#.round(5)
     df = pd.DataFrame(results, 

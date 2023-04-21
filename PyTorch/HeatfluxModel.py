@@ -91,7 +91,9 @@ class AlphaBetaModel(HeatFluxModel):
     def alpha_model(self, x):
         #diffusive_heatflux_model = self.local_heatflux_model(x)
         diffusive_heatflux_model = self.local_heatflux_beta_model(x)
+        #diffusive_heatflux_model[diffusive_heatflux_model<1e-4]=1e11
         alpha = self.heatflux_model(x) / diffusive_heatflux_model
+        #alpha[diffusive_heatflux_model<1e-4]=10
         return alpha
 
     def local_heatflux_beta_model(self, x):
