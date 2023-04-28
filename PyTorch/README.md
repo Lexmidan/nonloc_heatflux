@@ -4,7 +4,7 @@
 - [ ] Scaling of `x` in  `generate_QimpactTrainingData.py` ???
 
 ## Generate the data neseccary for neural network to train
-We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 105`
+We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 110`
 
 However, I forgot to include these data to `gitignore.git` and have accidentally uploaded them to this repository
 
