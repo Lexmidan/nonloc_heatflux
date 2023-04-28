@@ -32,11 +32,17 @@ def assemble(para, cache, alphas, betas, heatflux):
 
     ne=para['InitneProfile']
     Kb=para['boltzman']
-    k=para['conductivity']
+    kappa=para['conductivity']
     dx = para['deltaX']
 
     numberOfNode = para['numberOfNode']
     
+
+    #Conductivity according to notes_heatconduction.pdf
+    ##Coulomb logarithm
+    lamb =  np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*para['InitZbarProfile']/T**1.5)
+    kappa=kappa*1.31e10/lamb*para['tau']**(betas-5/2)
+
     # BC informations
     typeX0 = para['x=0 type']
     valueX0 = para['x=0 value']
@@ -57,40 +63,40 @@ def assemble(para, cache, alphas, betas, heatflux):
         # BC node at x=0
         if i == 0:
             if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, k[i], dx, T[0], alphas[i], betas[i]) #boundary values
-                Jacobian[0][1] = (1/dx**2)*(alphas[i+1]*k[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] - alphas[i]*k[i]*T[i]**betas[i])
+                Ug1 = utility.fixedGradient(valueX0, kappa[i], dx, T[0], alphas[i], betas[i]) #boundary values
+                Jacobian[0][1] = (1/dx**2)*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
+                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
             elif typeX0 == 'fixedTemperature':
                 Ug1 = utility.fixedValue(valueX0, T[1])
                 Jacobian[0][1] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] + alphas[i]*k[i]*Ug1**betas[i]\
-                            +2*(betas[i]+1)*alphas[i]*k[i]*T[i]**betas[i] - (betas[i]*alphas[i]*k[i]*T[i]**(betas[i]-1))*(Ug1+T[i+1]))
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i]*kappa[i]*Ug1**betas[i]\
+                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(Ug1+T[i+1]))
         # BC node at x=L
         elif i == numberOfNode-1:
             if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, k[i], dx, T[-1], alphas[i], betas[i])  #boundary values
-                Jacobian[-1][-2] = (1/dx**2)*(betas[i-1]*k[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*k[i-1]*T[i-1]**betas[i-1] - alphas[i]*k[i]*T[i]**betas[i])
+                Ug2 = utility.fixedGradient(valueXL, kappa[i], dx, T[-1], alphas[i], betas[i])  #boundary values
+                Jacobian[-1][-2] = (1/dx**2)*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
+                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
             elif typeXL == 'fixedTemperature':
                 Ug2 = utility.fixedValue(valueXL, T[-2])
                 Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i]*k[i]*Ug2**betas[i] + alphas[i-1]*k[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*k[i]*T[i]**betas[i] - (betas[i]*alphas[i]*k[i]*T[i]**(betas[i]-1))*(T[i-1]+Ug2))  
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i]*kappa[i]*Ug2**betas[i] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
+                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+Ug2))  
         # Interior nodes
 
         else:   #!!! \alpha_{i+1/2} := alpha[i]
-            Jacobian[i][i+1] = (1/dx**2)*.5*(alphas[i+1]*k[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] - alphas[i]*k[i]*T[i]**betas[i])
+            Jacobian[i][i+1] = (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
+                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
             
-            Jacobian[i][i-1] = (1/dx**2)*.5*(betas[i-1]*k[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*k[i-1]*T[i-1]**betas[i-1] - alphas[i]*k[i]*T[i]**betas[i])
+            Jacobian[i][i-1] = (1/dx**2)*.5*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
+                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
             
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*k[i+1]*T[i+1]**betas[i+1] + alphas[i-1]*k[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*k[i]*T[i]**betas[i] - (betas[i]*alphas[i]*k[i]*T[i]**(betas[i]-1))*(T[i-1]+T[i+1]))
+            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
+                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+T[i+1]))
 
 
     # Calculate F (right hand side vector)
-    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,k)
+    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
     F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
 
     # Store in cache
@@ -132,8 +138,9 @@ def initialize(para):
     beta_prof[:,0] = beta_init.reshape(1,-1)
     times=np.array([0])
     dt=Exception("dt wasn't calculated")
+    kappa=Exception("kappa wasn't calculated")
     cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init,
-             'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt,
+             'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt, 'conductivity': kappa,
              'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof}
     return cache
 
@@ -227,11 +234,17 @@ def newtonIteration(para, cache):
         alphas, betas, heatflux = get_data_qless(para['NNmodel'], para['x'], Tscaled, gradTscaled,Zscaled, \
                                         nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/4))
                                                                                 #size of the input vector
-    
-    
+        #week 19th notes. \alpha[localtransport]:=1 ()
+        #alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1e-1]=1
+        #alphas=scipy.ndimage.gaussian_filter1d(alphas,3)
+        alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1]=1
+        
+        #alphas=scipy.ndimage.gaussian_filter1d(alphas,2)
+
+
     #interpolation needed in order to 'place' coefficients to the center of the cell
-    alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
-    betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
+    ##alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
+    ##betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
     
     cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/\
                                (para['conductivity']*para['alphas']*T[:,0]**2.5))
@@ -319,8 +332,6 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):
     alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy()
     betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
 
-    alphas=scipy.ndimage.gaussian_filter1d(alphas,1)
-    betas = scipy.ndimage.gaussian_filter1d(betas,1)
 
     for i in range(int((len(x)-len(alphas))/2)):              
         alphas = np.append(alphas[0], alphas)

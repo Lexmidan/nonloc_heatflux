@@ -45,15 +45,15 @@ def main(model):
     df.at['CPU'] = 1
     
     # Grid
-    df.at['Time_multiplier'] = 1e4
+    df.at['Time_multiplier'] = 1e-6
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x']
 
     # Material
     df.at['material function'] = 'Given by NN'
-    #df.at['conductivity']=np.ones(len(df['x']))#
     df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
+    df.at['tau'] = 1e-3 #look for eq (4) in  Calculation of Heat Conduction Utilizing Neural Networks
     df.at['boltzman']=1.6e-8 #eV-> erg
 
     # Initial conditions
@@ -93,7 +93,7 @@ def main(model):
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/4))
                                                                     #length of the input vector
     # Solution
-    df.at['numberOfTimeStep'] = 100#400
+    df.at['numberOfTimeStep'] = 65#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
     df.at['maxIteration'] = 32
     df.at['convergence'] = 1e-1

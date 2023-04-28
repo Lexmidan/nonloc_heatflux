@@ -21,7 +21,7 @@ def fixedValue(value, U2):
 
 
 #TEST GIT EXTS WI
-def fixedGradient(q, k, dx, U1, alphas, betas):
+def fixedGradient(q, kappa, dx, U1, alphas, betas):
     """  Neumann boundary condition
     
     Assume that the resulted gradient at BC is fixed.
@@ -29,13 +29,13 @@ def fixedGradient(q, k, dx, U1, alphas, betas):
     
     Return: float
     """
-    #(U1-Ug)/dx*k=q
-    Ug =  q *(betas+1)/(k*alphas) * 2 * dx  + U1
+    #(U1-Ug)/dx*kappa=q
+    Ug =  q *(betas+1)/(kappa*alphas) * 2 * dx  + U1
     return Ug
 
 
 
-def secondOrder(U, Ug1, Ug2, alphas, betas, k):
+def secondOrder(U, Ug1, Ug2, alphas, betas, kappa):
     """ Calculate second order derivative
     
     Centered differencing approximation.
@@ -55,13 +55,13 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, k):
 
     for i in range(0, U.size):
         if i==0:
-            d2U[i] = .5*(alphas[i]*k[i]*Ug1**betas[i] + alphas[i]*k[i]*U[i]**betas[i])*(U[i] - Ug1)\
-                    -.5*(alphas[i+1]*k[i+1]*U[i+1]**betas[i+1] + alphas[i]*k[i]*U[i]**betas[i])*(U[i+1] - U[i])
+            d2U[i] = .5*(alphas[i]*kappa[i]*Ug1**betas[i] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i] - Ug1)\
+                    -.5*(alphas[i+1]*kappa[i+1]*U[i+1]**betas[i+1] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i+1] - U[i])
         elif i==(U.size - 1):
-            d2U[i] = .5*(alphas[i-1]*k[i-1]*U[i-1]**betas[i-1] + alphas[i]*k[i]*U[i]**betas[i])*(U[i] - U[i-1])\
-                    -.5*(alphas[i]*k[i]*Ug2**betas[i] + alphas[i]*k[i]*U[i]**betas[i])*(Ug2 - U[i])
+            d2U[i] = .5*(alphas[i-1]*kappa[i-1]*U[i-1]**betas[i-1] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i] - U[i-1])\
+                    -.5*(alphas[i]*kappa[i]*Ug2**betas[i] + alphas[i]*kappa[i]*U[i]**betas[i])*(Ug2 - U[i])
         else:
-            d2U[i] = .5*(alphas[i-1]*k[i-1]*U[i-1]**betas[i-1] + alphas[i]*k[i]*U[i]**betas[i])*(U[i] - U[i-1])\
-                    -.5*(alphas[i+1]*k[i+1]*U[i+1]**betas[i+1] + alphas[i]*k[i]*U[i]**betas[i])*(U[i+1] - U[i])
+            d2U[i] = .5*(alphas[i-1]*kappa[i-1]*U[i-1]**betas[i-1] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i] - U[i-1])\
+                    -.5*(alphas[i+1]*kappa[i+1]*U[i+1]**betas[i+1] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i+1] - U[i])
 
     return d2U
