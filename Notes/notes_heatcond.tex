@@ -1,0 +1,573 @@
+%\documentclass[10pt]{book}
+\documentclass[12pt]{article}
+%\documentclass[9pt]{article}
+%\documentclass[11pt]{article}
+%\documentclass[12pt]{report}
+
+\usepackage[final]{graphicx}
+\usepackage{amssymb,amsmath}
+\usepackage{isomath}
+\usepackage{bm}
+\usepackage{color}
+%\usepackage[vlined,ruled]{algorithm2e}
+
+\textheight24.2cm
+%\textwidth19.5cm
+\textwidth18cm
+\topmargin-2cm
+\oddsidemargin-10mm
+\evensidemargin-10mm
+\parskip8pt
+\parindent0pt
+%\displayskip0pt
+
+%\lineskip1.5em
+\definecolor{dgreen}{rgb}{0.01,0.5,0.01}
+
+
+%\newcommand{\func}[1]{\textcolor{blue}{\mathrm{\bf #1}}}
+%\newcommand{\funct}[1]{\textcolor{blue}{{\bf #1}}}
+\newcommand{\ffile}[1]{\textcolor{blue}{SRC/{#1}}}
+\newcommand{\fproc}[2]{\textcolor{blue}{SRC/{#1}:}\textcolor{red}{\tt{#2}}}
+
+\newcommand{\fdfile}[1]{\textcolor{blue}{SRC/{#1}}}
+\newcommand{\fdprog}[1]{\textcolor{red}{{#1}}}
+\newcommand{\fdsubr}[1]{\textcolor{red}{{#1}}}
+\newcommand{\fdfunc}[1]{\textcolor{red}{{#1}}}
+
+\newcommand{\fmdfile}[1]{\textcolor{blue}\mathrm{SRC/{#1}}}
+\newcommand{\fmdprog}[1]{\textcolor{red}{\mathrm{#1}}}
+\newcommand{\fmdsubr}[1]{\textcolor{red}{\mathrm{#1}}}
+\newcommand{\fmdfunc}[1]{\textcolor{red}{\mathrm{#1}}}
+
+\newcommand{\fcfile}[1]{\textcolor{blue}{file \fdfile{#1}}}
+\newcommand{\fcprog}[1]{\textcolor{red}{program \fdprog{#1}}}
+\newcommand{\fcsubr}[1]{\textcolor{red}{subroutine \fdsubr{#1}}}
+\newcommand{\fcfunc}[1]{\textcolor{red}{function \fdfunc{#1}}}
+
+\newcommand{\comc}[1]{\textcolor{dgreen}{\fbox{{#1}}}}
+\newcommand{\comalg}[1]{\textcolor{dgreen}{$\blacktriangleright$ Alg.~\ref{#1}}}
+
+
+\newcommand{\dx}{\Delta x}
+\newcommand{\dy}{\Delta y}
+\newcommand{\dt}{\Delta t}
+\newcommand{\dftil}{\Delta \tilde{f}}
+
+\newcommand{\oh}{\frac{1}{2}}
+
+\newcommand{\im}{i-1}
+\newcommand{\ip}{i+1}
+\newcommand{\jm}{j-1}
+\newcommand{\jp}{j+1}
+\newcommand{\imh}{i-\oh}
+\newcommand{\iph}{i+\oh}
+\newcommand{\jmh}{j-\oh}
+\newcommand{\jph}{j+\oh}
+
+\newcommand{\imht}{i-1/2}
+\newcommand{\ipht}{i+1/2}
+\newcommand{\jmht}{j-1/2}
+\newcommand{\jpht}{j+1/2}
+
+\newcommand{\np}{n+1}
+\newcommand{\nph}{n+\oh}
+\newcommand{\npht}{n+1/2}
+
+\def\cond{\kappa}
+\def\clog{\lambda_{ei}}
+
+\begin{document}
+
+%\renewcommand[1]{\exp{#1}}{\mathrm{e^{#1}}}
+
+%---------------------------------------------------------------
+\begin{center}
+\hrulefill\\[4mm]
+{\Large\bf Calculation of Heat Conduction Utilizing Neural Networks}\\[4mm]
+{\large Aleksandr Bogdanov,\quad
+        Milan Holec,\quad
+        Pavel V\'{a}chal}\\[3mm]
+%{\large Richard Liska,\quad
+%        Milan Kucha\v{r}\'{i}k,\quad
+%        Pavel V\'{a}chal}\\[3mm]
+{\normalsize (and whoever will work on this)}\\[8mm]
+{\it Notes compiled by PV} {\tt(pavel.vachal@fjfi.cvut.cz)}\\[3mm]
+{\it \today}\\[2mm]
+\hrulefill
+\end{center}
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+\tableofcontents
+
+\hrulefill
+%\newpage
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+\section{Governing Equations}
+
+We want to solve
+\begin{align}\label{pde}
+  \frac{d\,\varepsilon(x)}{dt} &= -\vec{\nabla} \cdot \vec{q}(x), 
+\end{align}
+where
+\begin{align}\label{q_TbNT}
+    \vec{q}(x)&= - \alpha(x) \cond(x) T(x)^{\beta(x)} \vec{\nabla} T(x),  
+\end{align}
+and
+\begin{align}\label{e_kB}
+  \varepsilon(x)
+  &= C_V(x)\,T(x) = \frac{3}{2}n(x)\,k_B\,T(x) .
+\end{align}
+The~Gauss units are as follwoing 
+$\varepsilon\left[\frac{\mathrm{erg}}{\mathrm{cm}^3}\right], T [\mathrm{eV}], q [\frac{\mathrm{erg}}{\mathrm{cm}^2}]$
+with $k_B= 1.380649\times 10^{-16} \frac{\mathrm{erg}}{\mathrm{K}}
+      = 1.602178\times 10^{-12} \frac{\mathrm{erg}}{\mathrm{eV}}$ and $\alpha, \beta$ are unitless.
+The~conductivity $\cond$ in our model is defined in Gauss units as
+\begin{align}
+  \cond(x)&= \frac{Z(x) + 0.24}{Z(x) + 4.2}~ 
+    \frac{1.31 \times 10^{10}}{Z(x) \clog(x)}~
+    \tau^{\beta(x)-\frac{5}{2}} , 
+\end{align}
+where Coulomb logarithm 
+$\clog(x) = 23 - \ln\left(\frac{\sqrt{n(x)} Z(x)}{T(x)^{3/2}}\right)$ 
+(see Plasma Formularly) and $\tau = \frac{1}{T_\mathrm{preheat}}$. 
+{\bf We use $T_\mathrm{preheat} = 1000~\mathrm{eV}$ to safely include 
+the~preheat region} of the~hohlraum wall simulation. Note that 
+$1\,\mathrm{erg}= 1\,\frac{\mathrm{g}\cdot\mathrm{cm}^2}{\mathrm{s}^2}
+= 10^{-7}\,\mathrm{J}$, which might be used to convert heat flux for 
+benchmarking.
+
+In order to solve \eqref{pde}, \eqref{q_TbNT}, and \eqref{e_kB}, we define 
+\begin{align}\label{F}
+  F&:= C_V\,\frac{d\,T}{dt}
+  - \frac{d}{dx}\underset{q}{\underbrace{%
+      \left(\alpha \cond T^\beta \frac{d}{dx}T\right)}}
+%      ~\overset{\boldsymbol{!}}{=}~0.
+\end{align}
+and our task will be to find $T$ that solves
+\begin{align}\label{Feq}
+  F(T)&=0.
+\end{align}
+
+
+%---------------------------------------------------------------
+\section{Discretization}
+
+\begin{figure}[htb]%[tb]%
+\centerline{\includegraphics[width=0.8\textwidth]{pics/mesh-stag_withBC}}
+\caption{\it Discretization of the 1D problem}
+\label{fig:discr}
+\end{figure}
+
+
+We discretize the problem on a general 1D mesh with cell-related variables indexed
+by integers and node-related ones by half-integers, as shown in Fig.~\ref{fig:discr}.
+
+Thus the cell volume is
+\begin{align}
+\dx_i&=x_{\iph}-x_{\imh},
+\end{align}
+while the volume of the node-assigned dual cell 
+(distance between neighboring cell centers) is
+\begin{align}
+\dx_{\iph}&=x_{i+1}-x_{i} = \frac{\dx_i+\dx_{\ip}}{2}.
+\end{align}
+The divergence of $q$ in \eqref{pde} is discretized on the primary cell by 
+the finite difference
+\begin{align}
+  \left.\vec{\nabla} \cdot \vec{q}\right\rvert_i \overset{1D}{=}
+  \left.\frac{d\,q}{dx}\right\rvert_i
+  &\approx  \frac{q_{\iph}-q_{\imh}}{\dx_i} ,
+\end{align}
+with the nodal value of the~flux \eqref{q_TbNT} being approximated as
+\begin{align}
+  q_{\iph} &= \overline{\left(\alpha\cond T^\beta\right)}_{\iph}\,
+  \frac{T_{i+1}-T_i}{\dx_{\iph}},
+\end{align}
+where\;
+$\overline{\left(\alpha\cond T^\beta\right)}_{\iph}$\;
+is obtained by some kind of averaging from the two connected cells, for example
+\begin{subequations}\label{ak_aver}
+\begin{align}
+  \overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+  &= \frac{\left(\alpha\cond T^\beta\right)_i
+         + \left(\alpha\cond T^\beta\right)_{i+1}}{2},\\
+  \overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+  &= \frac{\dx_i\,\left(\alpha\cond T^\beta\right)_i
+         + \dx_{i+1}\,\left(\alpha\cond T^\beta\right)_{i+1}}
+           {\dx_i+\dx_{i+1}}, \quad\text{or}\\
+  \overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+  &= \frac{\frac{1}{\dx_i}\,\left(\alpha\cond T^\beta\right)_i
+         + \frac{1}{\dx_{i+1}}\,\left(\alpha\cond T^\beta\right)_{i+1}}
+           {\frac{1}{\dx_i}+\frac{1}{\dx_{i+1}}},
+\end{align}
+\end{subequations}
+where we denoted
+\begin{align}
+  \left(\alpha\cond T^\beta\right)_{j}
+  &=\alpha_j \cond_j T_j^{\beta_j}.
+\end{align}
+
+Discretizing \eqref{Feq}, resp. \eqref{pde}, \eqref{q_TbNT}, and \eqref{e_kB}
+over the $i$-th cell, we have
+\begin{align}\label{F_disc}
+  F_i&:= C_{Vi}\,\frac{d\,T_i}{dt}
+  - \frac{\overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+          \frac{T_{i+1}-T_{i}}{\dx_{\iph}}
+        - \overline{\left(\alpha\cond T^\beta\right)}_{\imh}
+          \frac{T_{i}-T_{i-1}}{\dx_{\imh}}
+  }{\dx_i}
+\end{align}
+with space-dependent $\alpha$ and $\beta$ being provided by the neural network
+and $k$, $C_V$ being also functions of $x$:
+\begin{align}
+ \alpha&=\alpha(\mathrm{NN}(x)),&
+ \beta&=\beta(\mathrm{NN}(x)),&
+ k&=k(Z(x)),&
+ C_V&=C_V(n(x)).
+\end{align}
+At this point let us remark, that classical heat conductivity in plasma
+uses constant \,$\beta=5/2$,\, which further simplifies the equations. This is the case
+for example in [Silar, vyzkumak, 2009]. However, there the problem is transformed
+using \,$\theta=T^{7/2}$\, and solved by a mimetic scheme, whereas here we are going
+to proceed by Newton's iterative method.
+
+For a regular mesh (i.e., with equidistant nodes), we have
+\begin{align}
+  \dx &= \dx_i = \dx_{\iph}, \; \forall i,
+\end{align}
+and thus \eqref{F_disc} simplifies to
+\begin{align}\label{F_disc_eq}
+  F_i&= C_{Vi}\,\frac{d\,T_i}{dt}
+  - \frac{1}{\dx^2}\left\lgroup
+          \overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+          \left(T_{i+1}-T_{i}\right)
+        - \overline{\left(\alpha\cond T^\beta\right)}_{\imh}
+          \left(T_{i}-T_{i-1}\right)
+          \right\rgroup
+\end{align}
+and all three types of averaging \eqref{ak_aver} are equivalent:
+\begin{align}\label{ak_aver_eq}
+  \overline{\left(\alpha\cond T^\beta\right)}_{\iph}
+  &= \frac{\left(\alpha\cond T^\beta\right)_i
+         + \left(\alpha\cond T^\beta\right)_{i+1}}{2}.
+\end{align}
+
+There are several ways to solve \eqref{Feq}, that is,
+in the discrete case
+\begin{align}\label{Feq_disc}
+F_i(\vectorsym{T})&=0,\;\forall i.
+\end{align}
+
+Replacing also the time derivative by a finite difference,
+\eqref{F_disc_eq} becomes
+\begin{align}\label{eq:Fprecise}
+  F_i(\vectorsym{T}) &= C_{V_i}\,\frac{T_i-T_i^{[t-\dt]}}{\dt}
+  - \frac{1}{\dx^2}\left\lgroup
+          {\textstyle{\overline{\left(\alpha\cond T^\beta\right)}}}_{\iph}
+          \left(T_{i+1}-T_{i}\right)
+        - {\textstyle{\overline{\left(\alpha\cond T^\beta\right)}}}_{\imh}
+          \left(T_{i}-T_{i-1}\right)
+    \right\rgroup,
+\end{align}
+where $T_i^{[t-\dt]}$ is the temperature at the previous time level $t-\dt$.
+Note that by using temperature at the actual time level $t$
+in the spatial difference (the term in parentheses),
+we are aiming at implicit schemes, so that the time step $\dt$ is not
+overrestricted by stability requirements.
+
+
+%---------------------------------------------------------------
+\section{Solving the Discrete Problem}
+%---------------------------------------------------------------
+\subsection{Newton's Iteration}
+
+For simplicity, let's take in each equation the value of \,$(\alpha\,k/\beta)$\,
+from the actual cell instead of using nodal averages at its endpoints.
+Then we have a system similar
+to \eqref{Feq_disc} with the $i$-th equation being
+\begin{align}\label{F_disc_eq_cellb}
+  F^*_i(\vectorsym{T})&= C_{Vi}\,\frac{T_i-T_i^{[t-\dt]}}{\dt}
+  - \alpha_i \cond_i T_i^{\beta_i} \,
+          \frac{T_{i-1} - 2\,T_{i} + T_{i+1}}{\dx^2}.
+\end{align}
+The Jacobian of such system is a tridiagonal matrix with the elements
+\begin{subequations}\label{dF_disc_eq_cellb}
+  \begin{align}
+    J_{i,i}
+    &= \frac{\partial F^*_i}{\partial\,T_i}
+    =  \frac{C_{Vi}}{\dt}    
+        + 2\,\frac{\alpha_i\,k_i}{\dx^2}(\beta_i+1)\,T_{i}^{\beta_i}
+    \\
+    J_{i,i\pm 1}
+    &= \frac{\partial F^*_i}{\partial\,T_{i\pm 1}}
+    = -\,\frac{\alpha_i \cond_i T_i^{\beta_i}}{\dx^2}.
+\end{align}
+\end{subequations}
+
+Using precise definition of nonlinear functional $F$ given by 
+\eqref{eq:Fprecise} and approximate Jacobian \eqref{dF_disc_eq_cellb},
+we can now perform the $k$-th iteration of Newton's method:
+\begin{align}
+  \vectorsym{T}^{(k+1)} = \vectorsym{T}^{(k)} -
+                        \tensorsym{J}^{-1}\, \vectorsym{F}(\vectorsym{T}^{(k)}).
+\end{align}
+
+Keep in mind, that the superscript $^{(k)}$ stands for Newton's iteration,
+not for the evolution in time! Therefore, $T_i^{[t-\dt]}$ in \eqref{F_disc_eq_cellb}
+stays the same in all
+iterations at given time $t$, until the solution $\vectorsym{T}$ at this time 
+level has converged.
+
+
+If we require an exact Jacobian, we can obtain it by deriving from the equation \eqref{eq:Fprecise} using \eqref{ak_aver}. Consequently, it can be deduced that:
+
+\begin{subequations}\label{Jexact}
+  \begin{align}
+    J_{i,i}
+    &= \frac{\partial F_i}{\partial\,T_i}
+    =  \frac{C_{Vi}}{\dt}    
+        + \frac{1}{2}\alpha_{i+1} k_{i+1}T^{\beta_{i+1}}_{i+1}
+        + \frac{1}{2}\alpha_{i-1} k_{i-1}T^{\beta_{i-1}}_{i-1}
+        + (\beta_i+1)\alpha_i k_i T^{\beta_i}_i
+        - \beta_i \alpha_i k_i T^{\beta_i-1}_i \left(T_{i+1}+T_{i+1}\right)
+    \\
+    J_{i,i\pm 1} 
+    &= \frac{\partial F^*_i}{\partial\,T_{i\pm 1}}
+    = \frac{1}{2} \beta_{i\pm 1} \alpha_{i\pm 1} k_{i\pm 1} T_{i\pm 1}^{\beta_{i\pm 1}-1} T_i -
+        \frac{1}{2} \left( \beta_{i\pm 1}+1\right)\alpha_{i\pm 1} k_{i\pm 1} T_{i\pm 1}^{\beta_{i\pm 1}}  -\frac{1}{2} \alpha_i k_i T_{i}^{\beta_i}
+\end{align}
+\end{subequations}
+%Note that in [Silar, vyzkumak, 2009], a similar process is applied to the
+%nonlinear case with non-zero but constant $\beta=5/2$, where the system is
+%first transformed into the variable $\theta=T^{7/2}$.
+
+%---------------------------------------------------------------
+\subsection{Boundary Conditions}
+
+We will enforce 
+\begin{align}
+  \nabla T &= 0
+\end{align}
+on both ends of the domain. To do this on a mesh of $N$ cells indexed from
+$1$ to $N$
+(see Fig.~\ref{fig:discr}), we formally introduce the ghost values
+\begin{align}
+  T_0 &= T_1,&   T_{N+1}&=T_N.
+\end{align}
+Inserting them into the equations \eqref{F_disc_eq_cellb}
+for the boundary cells ($i=1$ resp. $i=N$), we get
+\begin{subequations}
+  \begin{align}
+    %\label{F_disc_eq_cellb}
+    F_1(\vectorsym{T}) &:= C_{V_1}\,\frac{T_1-T_1^{[t-\dt]}}{\dt}
+     - \frac{
+       \textstyle{\overline{\left(\alpha\cond T^\beta\right)}}_{\frac{3}{2}}
+        ( T_{2}-T_{1}) }{\dx^2} ,
+    \\
+    F_N(\vectorsym{T}) &:= C_{V_N}\,\frac{T_N-T_N^{[t-\dt]}}{\dt}
+     + \frac{
+       \textstyle{\overline{\left(\alpha\cond T^\beta\right)}}_{N - \frac{1}{2}}
+        ( T_{N}-T_{N-1}) }{\dx^2} ,
+\end{align}
+\end{subequations}
+which immediately yields the first and last row of the Jacobian matrix
+\begin{subequations}
+  \begin{align}
+    J_{1,1}
+    &~=~ \frac{\partial F^*_1}{\partial\,T_1}
+     ~=~ \frac{C_{V_1}}{\dt}    
+        + \frac{\alpha_1 \cond_1}{\dx^2} (\beta_1+1)\,T_{1}^{\beta_1},\\
+    J_{1,2}
+    &~=~\frac{\partial F^*_1}{\partial\,T_2}
+     ~=~ -\,\frac{\alpha_1 \cond_1 T_1^{\beta_1}}{\dx^2},\\
+    J_{N,N-1}
+    &~=~\frac{\partial F^*_N}{\partial\,T_{N-1}}
+     ~=~ -\,\frac{\alpha_N \cond_N T_{N}^{\beta_N}}{\dx^2},\\
+    J_{N,N}
+    &~=~\frac{\partial F^*_N}{\partial\,T_N}
+     ~=~ \frac{C_{V_N}}{\dt}    
+        + \frac{\alpha_N \cond_N}{\dx^2} (\beta_N+1)\,T_{N}^{\beta_N}.
+\end{align}
+\end{subequations}
+
+
+%---------------------------------------------------------------
+\section{The Linear Case}
+
+Let us now look at the special case of linear heat conduction,
+that is,
+\begin{align}
+  \beta_i&\equiv 0\;,\forall i
+\end{align}
+and for simplicity let us also use a constant coefficient
+\begin{align}
+ a&=\alpha_i\,k_i,\,\forall i
+\end{align}
+and constant heat capacity.
+In other words, we are solving
+\begin{align}
+  C_V\frac{d\,T}{dt} &= a\,\frac{d^2\,T}{dx^2},
+\end{align}
+which we discretize (again aiming at the implicit scheme),
+define the functional
+\begin{align}\label{F_const}
+  F_i&=C_V\frac{T_i-T_i^{[t-\dt]}}{\dt} - a\,\frac{T_{i-1}-2\,T_i+T_{i+1}}{\dx^2}
+\end{align}
+and calculate
+\begin{align}\label{eq_const}
+  F_i&=0,\; \forall i.
+\end{align}
+If Newton's iteration was to be used, the Jacobian would be a constant tridiagonal
+matrix with elements
+\begin{subequations}
+  \begin{align}
+    J_{i,i}
+    &= \frac{\partial F_i}{\partial\,T_i}
+    =  \frac{C_V}{\dt} + 2\,\frac{a}{\dx^2}\\
+    J_{i,i\pm 1}
+    &= \frac{\partial F_i}{\partial\,T_{i\pm 1}}
+    = -\,\frac{a}{\dx^2}.
+\end{align}
+\end{subequations}
+However, for such a simple problem it is not necessary to iterate
+or even explicitly formulate the Jacobian.
+We can simply rewrite (basically just reorder) \eqref{eq_const} with \eqref{F_const} as
+\begin{align}
+  T_i - \frac{a}{C_V}\,\frac{\dt}{\dx^2}\left(T_{i-1}-2\,T_i+T_{i+1}\right) &= T_i^{[t-\dt]},
+\end{align}
+that is,
+\begin{align}
+  - \frac{a}{C_V}\,\frac{\dt}{\dx^2}\,T_{i-1}
+  + \left(1+2\frac{a}{C_V}\,\frac{\dt}{\dx^2}\right)T_i
+  - \frac{a}{C_V}\,\frac{\dt}{\dx^2}\,T_{i+1}
+   &= T_i^{[t-\dt]},
+\end{align}
+and denoting
+\begin{align}
+  b &= \frac{a}{C_V}
+\end{align}
+we recover 
+\begin{align}
+  - b\,\frac{\dt}{\dx^2}\,T_{i-1}
+  + \left(1+2\,b\,\frac{\dt}{\dx^2}\right)T_i
+  - b\,\frac{\dt}{\dx^2}\,T_{i+1}
+   &= T_i^{[t-\dt]},
+\end{align}
+which yields a simple linear system
+\begin{align}
+   \tensorsym{A}\;\vectorsym{T}&=\vectorsym{T}^{[t-\dt]},
+\end{align}
+with a tridiagonal constant matrix $\tensorsym{A}$
+as it can be found in many textbooks on implicit methods for parabolic problems.
+
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+\end{document}
+
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+
+
+%---------------------------------------------------------------
+\section{Finite Differences}
+
+Equation \eqref{Feq} can be also solved using finite differences.
+To demonstrate the process, assume the
+(not very realistic)
+special case which avoids
+the explicit nonlinearity, that is, $\beta\equiv 0$, simplifying 
+the discrete functional \eqref{F_disc_eq}  to
+\begin{align}\label{F_disc_eq_b0}
+  F_i&:= \frac{3}{2}n_i\,k_B\,\frac{d\,T_i}{dt}
+  - \frac{1}{\dx^2}\left\lgroup
+          \overline{\left(\alpha\,k\right)}_{\iph}
+          \left(T_{i+1}-T_{i}\right)
+        - \overline{\left(\alpha\,k\right)}_{\imh}
+          \left(T_{i}-T_{i-1}\right)
+    \right\rgroup.
+\end{align}
+Now, setting the functional equal to $0$, replacing the time derivative by
+finite difference between time levels $t^n$ and $t^{n+1}$ and using the implicit scheme
+(that is, using the temperatures at the right-hand side at time $t^{n+1}$), we have
+\begin{align}\label{F_disc_eq_b0_1}
+  0 &= \frac{3}{2}n_i\,k_B\,\frac{T_i^{n+1}-T_i^n}{\dt}
+  - \frac{1}{\dx^2}\left\lgroup
+          \overline{\left(\alpha\,k\right)}_{\iph}
+          \left(T_{i+1}^{n+1}-T_{i}^{n+1}\right)
+        - \overline{\left(\alpha\,k\right)}_{\imh}
+          \left(T_{i}^{n+1}-T_{i-1}^{n+1}\right)
+    \right\rgroup.
+\end{align}
+Let us repeat that due to the special choice $\beta\equiv 0$, the system is linear in $T$
+and the superscripts over $T$ now denote the time level, not a power of $T$.
+After some reordering, we have
+\begin{align}\label{F_disc_eq_b0_2}
+  T_i^{n+1}
+  &= T_i^n + \frac{2}{3\,n_i\,k_B}\frac{\dt}{\dx^2}
+    \left\lgroup
+          \overline{\left(\alpha\,k\right)}_{\imh}\,T_{i-1}^{n+1}
+          - \left(\overline{\left(\alpha\,k\right)}_{\imh}
+                 +\overline{\left(\alpha\,k\right)}_{\iph}\right)T_{i}^{n+1}
+          +\overline{\left(\alpha\,k\right)}_{\iph}
+           T_{i+1}^{n+1}
+    \right\rgroup,
+\end{align}
+which can be also written as
+\begin{align}
+\nonumber
+  - \frac{2}{3\,n_i\,k_B}\frac{\dt}{\dx^2}
+     \overline{\left(\alpha\,k\right)}_{\imh}\,T_{i-1}^{n+1}
+   + \left(1+\frac{2}{3\,n_i\,k_B}\frac{\dt}{\dx^2}
+    \left(\overline{\left(\alpha\,k\right)}_{\imh}
+         +\overline{\left(\alpha\,k\right)}_{\iph}\right)\right)T_{i}^{n+1}&\\
+   - \frac{2}{3\,n_i\,k_B}\frac{\dt}{\dx^2}
+    \overline{\left(\alpha\,k\right)}_{\iph}\,T_{i+1}^{n+1}
+    &= T_i^n,       
+    \label{F_disc_eq_b0_3}
+\end{align}
+which provides the $i$-th line (for an interior cell) of a linear system
+\begin{align}
+   \mathbf{A}\,\mathbf{T}^{n+1}&=\mathbf{T}^{n}
+\end{align}
+with a tridiagonal matrix $\mathbf{A}$.
+
+Note that in [Silar, vyzkumak, 2009], a similar process is applied to the
+nonlinear case with non-zero but constant $\beta=5/2$, where the system is
+first transformed into the variable $\theta=T^{7/2}$.
+
+Finally, let us remark that in the idealized case of constant heat conduction
+coefficient
+\begin{align}
+  b &~=~ \frac{2}{3\,n_i\,k_B}\overline{\left(\alpha\,k\right)}_{\imh}
+     ~=~ \frac{2}{3\,n_i\,k_B}\overline{\left(\alpha\,k\right)}_{\iph},\qquad \forall i,
+\end{align}
+we recover the classical tridiagonal system with the line (for an interior cell)
+of the form
+\begin{align}
+\nonumber
+  - b\,\frac{\dt}{\dx^2}\,T_{i-1}^{n+1}
+   + \left(1+2\,b\right)T_{i}^{n+1}
+   - b\,\frac{\dt}{\dx^2}\,T_{i+1}^{n+1}
+    &~=~ T_i^n,       
+%    \label{F_disc_eq_b0_3}
+\end{align}
+which can be found in many textbooks on implicit methods for parabolic problems.
+
+%- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - -
+%\subsubsection{}
+
+
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+%\begin{verbatim}
+%\end{verbatim}
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+%\section{}
+%---------------------------------------------------------------
+%---------------------------------------------------------------
+\end{document}
