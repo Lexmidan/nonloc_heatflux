@@ -45,7 +45,7 @@ def main(model):
     df.at['CPU'] = 1
     
     # Grid
-    df.at['Time_multiplier'] = 1e-6
+    df.at['Time_multiplier'] = 6e-7
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x']
@@ -78,8 +78,8 @@ def main(model):
     #NN
     if model==None:
         df.at['NNmodel']= None
-        df.at['alphas']= np.linspace(1,1, len(init_profile))#precal_alpha#np.linspace(1,8, len(init_profile))
-        df.at['betas'] = np.linspace(2.5,2.5, len(init_profile))  #precal_beta#np.linspace(2.5,2.5, len(init_profile)) 
+        df.at['alphas']= precal_alpha#np.linspace(1,8, len(init_profile))
+        df.at['betas'] = precal_beta#np.linspace(2.5,2.5, len(init_profile)) 
         df.at['heatflux']=np.linspace(0,0, len(init_profile))
    
 
@@ -93,10 +93,10 @@ def main(model):
                                 df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/4))
                                                                     #length of the input vector
     # Solution
-    df.at['numberOfTimeStep'] = 65#400
+    df.at['numberOfTimeStep'] = 100#400
     df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['maxIteration'] = 32
-    df.at['convergence'] = 1e-1
+    df.at['maxIteration'] = 16
+    df.at['convergence'] = 1
     df.at['relaxation'] =0.95# value in [0-1] Very sensitive!!!
 
     return df

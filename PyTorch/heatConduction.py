@@ -238,9 +238,10 @@ def newtonIteration(para, cache):
         #alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1e-1]=1
         #alphas=scipy.ndimage.gaussian_filter1d(alphas,3)
         alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1]=1
-        
+        alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))>800]=20
+        #alphas=scipy.ndimage.gaussian_filter1d(alphas,1)
         #alphas=scipy.ndimage.gaussian_filter1d(alphas,2)
-
+        #betas=scipy.ndimage.gaussian_filter1d(betas,2)
 
     #interpolation needed in order to 'place' coefficients to the center of the cell
     ##alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
@@ -252,6 +253,29 @@ def newtonIteration(para, cache):
     cache['times'] = np.append(cache['times'],cache['time'])
     log = cache['Log']
     ts = cache['ts']
+
+    ####Iterating till resudue is small enough
+    #for n in range(maxIteration):
+
+    # cache = assemble(para, cache, alphas, betas, heatflux)
+    # F = cache['F']
+    # norm = np.linalg.norm(F)
+    # slump = np.copy(norm)
+    # n=0
+    # while True:
+    #     n+=1
+    #     cache = assemble(para, cache, alphas, betas, heatflux)
+    #     F = cache['F']
+    #     norm = np.linalg.norm(F)
+    #     if norm/np.mean(1.5*(np.array([para['InitneProfile']]).T)*para['boltzman']*T) < convergence:
+    #         log.loc[ts,'PhysicalTime'] = cache['time']
+    #         log.loc[ts,'Iteration'] = n+1
+    #         log.loc[ts,'Residual'] = norm
+    #         break
+    #     cache = solveLinearSystem(para, cache)
+
+
+    #### Limit of max number of iters
     for n in range(maxIteration):
         cache = assemble(para, cache, alphas, betas, heatflux)
         F = cache['F']
@@ -273,7 +297,7 @@ def newtonIteration(para, cache):
           '[{:8.2E}'.format(np.min(T)),']',
           '[{:8.2E}'.format(np.max(T)),']',
           #' [','{:8.2E}'.format(np.mean(cache['T'])),']')
-          '[{:8.2E}'.format(np.mean(1.5*para['boltzman']*T*(np.array([para['InitneProfile']]).T))),']')
+          '[{:8.16E}'.format(np.mean(1.5*para['boltzman']*T*(np.array([para['InitneProfile']]).T))),']')
     return cache
 
 
