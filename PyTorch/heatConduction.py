@@ -11,7 +11,7 @@ import time
 import torch
 from matplotlib import pyplot as plt
 import scipy
-def assemble(para, cache, alphas, betas, heatflux):
+def assemble(para, cache):
     """ Assemble linear system Jacobian * dx = F
     
     Process:
@@ -30,30 +30,59 @@ def assemble(para, cache, alphas, betas, heatflux):
     """
 
 
-    ne=para['InitneProfile']
-    Kb=para['boltzman']
-    kappa=para['conductivity']
-    dx = para['deltaX']
-
-    numberOfNode = para['numberOfNode']
-    
-
-    #Conductivity according to notes_heatconduction.pdf
-    ##Coulomb logarithm
-    lamb =  np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*para['InitZbarProfile']/T**1.5)
-    kappa=kappa*1.31e10/lamb*para['tau']**(betas-5/2)
-
     # BC informations
     typeX0 = para['x=0 type']
     valueX0 = para['x=0 value']
     typeXL = para['x=L type']
     valueXL = para['x=L value']
-    
+    ne = cache['ne']
+    Z = cache['Zbar']
+    Kn = cache['Kn']
+    Kb = para['boltzman']
+    x = para['x']
+    dx = para['deltaX']
+
+    numberOfNode = para['numberOfNode']
     # Containers
     T = cache['T']; T0 = cache['T0']        #let T=T[i,j] then T0=T[i, j-1]
     F = cache['F']; Jacobian = cache['Jacobian']
+    dt = cache['dt']  
+
+
+    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
+        ##Coulomb logarithm 
+    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x']))
+        ##Thermal velocity (profile)
+    v=np.sqrt(T*Kb/para['m_e'])
+        ##Lambda mean free path
+    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
+    gradT=np.gradient(T,x)
+    ##Knudsen number accordint (5)
+    Kn = lamb*gradT/T
+    kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
+    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
     
-    dt = cache['dt']    
+
+
+    """
+    Parameters given by NN:
+    """    
+    
+    if para['NNmodel']==None:
+        alphas = para['alphas']
+        betas = para['betas']
+        heatflux = para['heatflux']
+    else:
+        scale=para['scaling']
+        alphas, betas, heatflux = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
+                                                                                #size of the input vector
+
+        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
+        cache['ratio']=ratio
+
+
     '''    
     Loop over grid
     '''
@@ -97,13 +126,11 @@ def assemble(para, cache, alphas, betas, heatflux):
 
     # Calculate F (right hand side vector)
     d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
-    F = (3/2*np.array([ne]).T)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
+    F = (3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
 
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
-    cache['alpha']=alphas
-    cache['beta']=betas
-    cache['heatflux']=heatflux
+    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
     return cache
 
 
@@ -122,25 +149,41 @@ def initialize(para):
     numberOfNode = para['numberOfNode']
     numOfTimeStep = para['numberOfTimeStep']
     T_init = para['InitTeProfile']
-    T = np.reshape(T_init.values, (numberOfNode,1)) #numberOfNode rows with Tic values
-    T0 = np.reshape(T_init.values, (numberOfNode,1))
+    Zbar_init=para['InitZbarProfile']
+    ne_init=para['InitneProfile']
+    Kn_init=para['InitKnProfile']
+    T = T_init 
+    T0 = T_init
     alpha_init = para['alphas']
     beta_init = para['betas']
+    heatflux_init= para['heatflux']
 
+    #Define empty matrices that will contain time evolution of the profiles
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
     alpha_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
     beta_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     heatflux_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
+    Zbar_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
+    Kn_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
+    ne_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
-    TProfile[:,0] = T.reshape(1,-1)  # first profile (column) is full of Tic 
+
+    #Filling first column with initial values of the quantities
+    TProfile[:,0] = T.reshape(1,-1)
     alpha_prof[:,0] = alpha_init.reshape(1,-1)
     beta_prof[:,0] = beta_init.reshape(1,-1)
+    heatflux_prof[:,0] = heatflux_init.reshape(1,-1)
+    Kn_prof[:,0] = Kn_init.reshape(1,-1)
+    ne_prof[:,0] = ne_init.reshape(1,-1)
+    Zbar_prof[:,0] = Zbar_init.reshape(1,-1)
     times=np.array([0])
+
     dt=Exception("dt wasn't calculated")
     kappa=Exception("kappa wasn't calculated")
-    cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init,
-             'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt, 'conductivity': kappa,
+    cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init, 'heatflux':heatflux_init,
+             'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt, 'kappa': kappa, 'Zbar':Zbar_init, 
+             'ne':ne_init,'Kn':Kn_init, 'Kn_prof':Kn_prof,'ne_prof':ne_prof,'Zbar_prof':Zbar_prof,
              'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof}
     return cache
 
@@ -180,15 +223,26 @@ def storeUpdateResult(cache):
     alpha_prof = cache['alpha_prof']     #all profiles of params
     beta_prof = cache['beta_prof']   
     heatflux_prof = cache['heatflux_prof']    
+    Zbar_prof = cache['Zbar_prof']   
+    Kn_prof = cache['Kn_prof']   
+    ne_prof = cache['ne_prof']
+
     alpha = cache['alpha']      #current profile
     beta = cache['beta']
     heatflux = cache['heatflux']
+    Zbar = cache['Zbar']
+    Kn = cache['Kn']
+    ne = cache['ne']
     T = cache['T']
     cache['T0'] = T.copy()
+
     TProfile[:,timeStep] = T.reshape(1,-1)
     alpha_prof[:,timeStep] = alpha.reshape(1,-1)
     beta_prof[:,timeStep] = beta.reshape(1,-1)
     heatflux_prof[:,timeStep] = heatflux.reshape(1,-1)
+    Zbar_prof[:,timeStep] = Zbar.reshape(1,-1)
+    Kn_prof[:,timeStep] = Kn.reshape(1,-1)
+    ne_prof[:,timeStep] = ne.reshape(1,-1)
     return cache
 
 def newtonIteration(para, cache):
@@ -206,78 +260,18 @@ def newtonIteration(para, cache):
     
     maxIteration = para['maxIteration']
     convergence = para['convergence']
-    
-    '''
-    NN PART
-    '''
-    
-    x = para['x']
-    numberOfNode = para['numberOfNode']
-    T = cache['T'];     #let T=T[i,j] then T0=T[i, j-1]
-    scale=para['scaling']
-    Zscaled=para['ScaledZ']
-    nescaled=para['Scaledne']
-    Knscaled=para['ScaledKn']
-    gradT=np.gradient(np.reshape(T, (numberOfNode)),x.values)
-    #initially T had form of [[1],[2],[3]...] not [1,2,3]
-    Tscaled=pd.DataFrame((np.reshape(T, (numberOfNode))-scale['T'].loc['mean'])/scale['T'].loc['std'])
-    gradTscaled=pd.DataFrame((gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std'])
 
-    """
-    Parameters given by NN:
-    """    
-    if para['NNmodel']==None:
-        alphas=para['alphas']
-        betas=para['betas']
-        heatflux = para['heatflux']
-    else:
-        alphas, betas, heatflux = get_data_qless(para['NNmodel'], para['x'], Tscaled, gradTscaled,Zscaled, \
-                                        nescaled, Knscaled, int(para['NNmodel'].fcIn.in_features/4))
-                                                                                #size of the input vector
-        #week 19th notes. \alpha[localtransport]:=1 ()
-        #alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1e-1]=1
-        #alphas=scipy.ndimage.gaussian_filter1d(alphas,3)
-        alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))<1]=1
-        alphas[np.abs(gradT/np.reshape(T, (numberOfNode)))>800]=20
-        #alphas=scipy.ndimage.gaussian_filter1d(alphas,1)
-        #alphas=scipy.ndimage.gaussian_filter1d(alphas,2)
-        #betas=scipy.ndimage.gaussian_filter1d(betas,2)
-
-    #interpolation needed in order to 'place' coefficients to the center of the cell
-    ##alphas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), alphas)
-    ##betas=np.interp(np.arange(0, numberOfNode)+0.5, np.arange(0,numberOfNode), betas)
-    
+    T = cache['T'];     #let T=T[i,j] then T0=T[i, j-1] 
     cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/\
-                               (para['conductivity']*para['alphas']*T[:,0]**2.5))
+                               (para['conductivity']*para['alphas']*T**2.5))
     cache['time']+=cache['dt']
     cache['times'] = np.append(cache['times'],cache['time'])
     log = cache['Log']
     ts = cache['ts']
 
-    ####Iterating till resudue is small enough
-    #for n in range(maxIteration):
 
-    # cache = assemble(para, cache, alphas, betas, heatflux)
-    # F = cache['F']
-    # norm = np.linalg.norm(F)
-    # slump = np.copy(norm)
-    # n=0
-    # while True:
-    #     n+=1
-    #     cache = assemble(para, cache, alphas, betas, heatflux)
-    #     F = cache['F']
-    #     norm = np.linalg.norm(F)
-    #     if norm/np.mean(1.5*(np.array([para['InitneProfile']]).T)*para['boltzman']*T) < convergence:
-    #         log.loc[ts,'PhysicalTime'] = cache['time']
-    #         log.loc[ts,'Iteration'] = n+1
-    #         log.loc[ts,'Residual'] = norm
-    #         break
-    #     cache = solveLinearSystem(para, cache)
-
-
-    #### Limit of max number of iters
     for n in range(maxIteration):
-        cache = assemble(para, cache, alphas, betas, heatflux)
+        cache = assemble(para, cache)
         F = cache['F']
         norm = np.linalg.norm(F)
         if n==0: slump = np.copy(norm)
@@ -334,40 +328,125 @@ def solve(para):
     return TProfile, cache, alpha_prof, betas_prof, heatflux_prof
 
 
-def get_data_qless(model, x, T, gradT, Z, n, Kn, lng):  
-    numFields = 4 #T, gradT, Z, n, Kn
-    Qdata=np.empty((0,numFields*lng), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta"
+def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):  
 
+    """
+    Takes model and profiles of physical values, scales them and compiles data frame, where every row corresponds to input vector of NN,
+    and every next row is assembled of interval moved a one point to the right relativily to the previous row (sliding interval).
+    Calculates non local heatflux with NN model, returns that heatflux. 
+
+    args: 
+
+        model - Trained and evaluated PyTorch model
+        x - np.array() cont. coordinates of every point of the profile, basically is used only for indexing
+        T, gradT, Z, n - np.arrays() of SCALED values of the physical quantities, which ARE used in NN
+        KnUnscaled - np.array() of UNSCALED Knudsen number, needed only for comparing local and non local heatfluxes
+        lng - number of points used for every quantity. Defines how 
+
+    output:
+        heatflux - np.array() of heatfluxes calculated with NN. Number of elements is equal to len(x), 
+                    BUT roughly lng/2 of first and last points are equal due to the last two 'for' cycles
+    """
+                #alphas betas - calculated fully from NN. alpha and beta are calculated manually
+
+    Tscaled=(T-scaling['T'].loc['mean'])/scaling['T'].loc['std']
+    gradTscaled=(gradT-scaling['gradT'].loc['mean'])/scaling['gradT'].loc['std']
+    nescaled=(n-scaling['n'].loc['mean'])/scaling['n'].loc['std']
+    Zscaled=(Z-scaling['Z'].loc['mean'])/scaling['Z'].loc['std']
+
+    Knmean=np.array([])  #Will contain mean values of Kn for each interval
+    nonloc_tester=pd.DataFrame(columns=['xmin', 'xmax', 'is loc']) #Will contain information whether the Kn<10e-3 is complied for the whole vector
+    numFields = 4 #T, gradT, Z, n
+    Qdata=np.empty((0,numFields*lng), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta" 
+ 
     for ind, _ in enumerate(x):  #x_min=x[ind], x_max=x[ind+2*rad], x_c=x[ind+rad]
-        datapoint=np.array([])          
-        if ind+lng>=len(x)+1:
+        datapoint=np.array([])  
+
+        if ind+lng>=len(x):
             break    
         else:
-            datapoint=np.append(datapoint, T.iloc[ind:ind+lng]) #append all Te in xmin-xmax
-            datapoint=np.append(datapoint, gradT.iloc[ind:ind+lng]) #append all gradTe in xmin-xmax
-            datapoint=np.append(datapoint, Z.iloc[ind:ind+lng]) 
-            datapoint=np.append(datapoint, n.iloc[ind:ind+lng]) 
+            datapoint=np.append(datapoint, Tscaled[ind:ind+lng]) #append all Te in xmin-xmax
+            datapoint=np.append(datapoint, gradTscaled[ind:ind+lng]) #append all gradTe in xmin-xmax
+            datapoint=np.append(datapoint, Zscaled[ind:ind+lng]) 
+            datapoint=np.append(datapoint, nescaled[ind:ind+lng]) 
+            nonloc_tester.loc[len(nonloc_tester.index)]=[x[ind],x[ind+lng], any(np.abs(Kn[ind:ind+lng])<1e-3)]
+
+            Knmean=np.append(Knmean, np.mean(Kn[ind:ind+lng]))
             #datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) 
             #datapoint=np.append(datapoint, x[ind:ind+lng])
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
             Qdata=np.append(Qdata,[datapoint], axis=0)
 
-    heatflux = model.heatflux_model(torch.tensor(Qdata).float()).detach().numpy()
+    heatflux = (model.forward(torch.tensor(Qdata).float())[:,0] * model.scaling['Q']['std'] + model.scaling['Q']['mean']).detach().numpy()
+    beta = (model.forward(torch.tensor(Qdata).float())[:,1] * model.scaling['beta']['std'] + model.scaling['beta']['mean']).detach().numpy()
+    beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
     alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy()
     betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
-
-
+    
     for i in range(int((len(x)-len(alphas))/2)):              
+        beta = np.append(beta[0], beta)
         alphas = np.append(alphas[0], alphas)
         betas = np.append(betas[0], betas)
         heatflux = np.append(heatflux[0], heatflux)
+        Knmean = np.append(Knmean[0], Knmean)
 
-    for i in range(int((len(x)-(ind-1))/2)):              
+    for i in range(int((len(x)-(ind-1))/2)):            
+        beta = np.append(beta, beta[-1])  
         alphas = np.append(alphas, alphas[-1])
         betas = np.append(betas, betas[-1])
-        heatflux = np.append(heatflux[0], heatflux)
+        heatflux = np.append(heatflux, heatflux[-1])
+        Knmean = np.append(Knmean, Knmean[-1])
+    alpha = calc_alpha(heatflux, beta, Z, T, gradT, Knmean)
 
-    return alphas,betas,heatflux#scipy.ndimage.gaussian_filter1d(alphas,3), scipy.ndimage.gaussian_filter1d(betas,3), heatflux
+
+    return alpha,beta,heatflux#scipy.ndimage.gaussian_filter1d(alphas,3), scipy.ndimage.gaussian_filter1d(betas,3), heatflux
+
+
+
+
+def qqRatio(qNN, kappa, x, T, gradT, Z, n, KnUnscaled, lng):  
+    """
+    Takes nonlocal heatflux calculated with NN and values of physical quantities needed for calculaing the local heatflux, 
+    compares them, returns ratio and DataFrame full of ratios for every *sliding* interval of length=lng, in corresp. with get_data_qless()
+
+    args:
+        qNN - np.array() heatflux calculated with NN
+        kappa, T, gradT - np.arrays() from which local heatflux will be calculated
+        x - np.array() used basically only for indexing the sliding interval
+    """
+    qloc=kappa * T**2.5 * gradT
+    Ratio = qNN/qloc
+    Qdata=np.empty((0,lng+1), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta"
+
+    for ind, _ in enumerate(x):  #x_min=x[ind], x_max=x[ind+2*rad], x_c=x[ind+rad]
+        datapoint=np.array([])          
+        if ind+lng>=len(x):
+            break    
+        else:
+            datapoint=np.append(datapoint, ind)
+            datapoint=np.append(datapoint, Ratio[ind:ind+lng])
+            Qdata=np.append(Qdata,[datapoint], axis=0)
+
+    df=pd.DataFrame(Qdata[:,1:], index=Qdata[:,0]) #Data is intervals of ratio, index corresponds to where the interval starts on x axis.
+
+    return df, Ratio
+
+
+
+def calc_alpha(qNN, beta, Z, T, gradT, Knmean):
+
+
+    # Get beta local heat flux
+    TkeV = 1e-3 * T[:]; gradTkeV = 1e-3 * gradT[:]
+    kQSH = 6.1e+02 * 1e3**2.5 * 1e3 # scaling constant consistent with SCHICK and T in keV
+    local_heatflux_beta_model = - kQSH / Z[:] * ((Z[:] + 0.24) / (Z[:] + 4.2))\
+      * TkeV[:]**beta * gradTkeV[:]
+
+    alpha = qNN/local_heatflux_beta_model
+    alpha[np.abs(Knmean)<1e-11]=1
+    
+    return alpha  
+
 
 #fig1, ax1 = plt.subplots(figsize=(6,3))
 

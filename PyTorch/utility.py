@@ -51,7 +51,7 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, kappa):
     Return: numpy array
     """
     
-    d2U = np.zeros((U.size, 1))
+    d2U = np.zeros((U.size,))
 
     for i in range(0, U.size):
         if i==0:

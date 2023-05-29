@@ -9,6 +9,7 @@ import heatConduction as hc
 import pandas as pd
 import HeatfluxModel as hfm
 import numpy as np
+import scipy.constants as const
 #### Import initial profile, used in PyTorch part. (x, Te, gradTe, ne, Zbar)
 init_profile=pd.read_csv('./Data/init_profile.csv', index_col=(0))
 ####
@@ -48,20 +49,23 @@ def main(model):
     df.at['Time_multiplier'] = 6e-7
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
-    df.at['x']=init_profile['x']
+    df.at['x']=init_profile['x'].values
 
     # Material
     df.at['material function'] = 'Given by NN'
     df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
     df.at['tau'] = 1e-3 #look for eq (4) in  Calculation of Heat Conduction Utilizing Neural Networks
-    df.at['boltzman']=1.6e-8 #eV-> erg
+    df.at['boltzman']=1.38e-16#8.617333262e-5(eV/K)   1.38e-16(CGS)
+    df.at['m_e'] = 9.1094*1e-28
+    df.at['q_e'] = 4.8032*1e-10
+    df.at['Gamma'] = 4 * const.pi * df['q_e']**4/df['m_e']**2
 
     # Initial conditions
-    df.at['InitTeProfile'] = init_profile['Te']
-    df.at['InitneProfile'] = init_profile['ne']
-    df.at['InitgradTeProfile'] = init_profile['gradTe']
-    df.at['InitZbarProfile'] = init_profile['Zbar']
-    df.at['InitKnProfile'] = init_profile['Kn']
+    df.at['InitTeProfile'] = init_profile['Te'].values
+    df.at['InitneProfile'] = init_profile['ne'].values
+    df.at['InitgradTeProfile'] = init_profile['gradTe'].values
+    df.at['InitZbarProfile'] = init_profile['Zbar'].values
+    df.at['InitKnProfile'] = init_profile['Kn'].values
 
     #Scaling
     df.at['scaling']=pd.read_csv('./Data/data_scaling.csv', index_col=(0))
@@ -85,19 +89,17 @@ def main(model):
 
     else:
         df.at['NNmodel']= model
-        scale = df['scaling']
-        Tscaled = pd.DataFrame((np.reshape(df['InitTeProfile'], (df['numberOfNode']))-scale['T'].loc['mean'])/scale['T'].loc['std'])
-        gradT = pd.DataFrame(np.gradient(np.reshape(df['InitTeProfile'], (df['numberOfNode'])),df['x'].values))
-        gradTscaled = (gradT-scale['gradT'].loc['mean'])/scale['gradT'].loc['std']
-        df.at['alphas'], df.at['betas'], df.at['heatflux'] = hc.get_data_qless(df['NNmodel'], df['x'], Tscaled, gradTscaled,df['ScaledZ'], \
-                                df['Scaledne'], df['ScaledKn'], int(df['NNmodel'].fcIn.in_features/4))
-                                                                    #length of the input vector
+        Te=np.reshape(df['InitTeProfile'],(df['numberOfNode'],1)) #This reshape (as every other made for T profile) is needed in order to keep
+        df.at['alphas'], df.at['betas'], df.at['heatflux'] = hc.get_data_qless(df['NNmodel'], df['x'],df['InitTeProfile'] , \
+                                                            df['InitgradTeProfile'],df['InitZbarProfile'], df['InitneProfile'], \
+                                                            df['InitKnProfile'], int(df['NNmodel'].fcIn.in_features/4), df['scaling'])
+                                                                                 #length of the input vector
     # Solution
-    df.at['numberOfTimeStep'] = 100#400
-    df.at['deltaX'] = df['x'].iloc[11]-df['x'].iloc[10]  #for different [i] dx differs at 16th decimal place
-    df.at['maxIteration'] = 16
+    df.at['numberOfTimeStep'] = 10#400
+    df.at['deltaX'] = df['x'][11]-df['x'][10]  #for different [i] dx differs at 16th decimal place
+    df.at['maxIteration'] = 1
     df.at['convergence'] = 1
-    df.at['relaxation'] =0.95# value in [0-1] Very sensitive!!!
+    df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
 
     return df
 
