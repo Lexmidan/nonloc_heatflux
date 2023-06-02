@@ -46,7 +46,7 @@ def main(model):
     df.at['CPU'] = 1
     
     # Grid
-    df.at['Time_multiplier'] = 6e-7
+    df.at['Time_multiplier'] = 4e-7
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x'].values
@@ -55,9 +55,9 @@ def main(model):
     df.at['material function'] = 'Given by NN'
     df.at['conductivity'] = (init_profile['Zbar']+0.24)/(init_profile['Zbar']*(init_profile['Zbar']+4.2))
     df.at['tau'] = 1e-3 #look for eq (4) in  Calculation of Heat Conduction Utilizing Neural Networks
-    df.at['boltzman']=1.38e-16#8.617333262e-5(eV/K)   1.38e-16(CGS)
-    df.at['m_e'] = 9.1094*1e-28
-    df.at['q_e'] = 4.8032*1e-10
+    df.at['boltzman']=3.57172518e-12#8.617333262e-5 (eV/K)   1.38e-16 (CGS)
+    df.at['m_e'] = 9.1094*1e-28 #g (CGS)
+    df.at['q_e'] = 4.8032*1e-10 #cm3/2 g1/2 s-1 (CGS)
     df.at['Gamma'] = 4 * const.pi * df['q_e']**4/df['m_e']**2
 
     # Initial conditions
@@ -90,15 +90,16 @@ def main(model):
     else:
         df.at['NNmodel']= model
         Te=np.reshape(df['InitTeProfile'],(df['numberOfNode'],1)) #This reshape (as every other made for T profile) is needed in order to keep
-        df.at['alphas'], df.at['betas'], df.at['heatflux'] = hc.get_data_qless(df['NNmodel'], df['x'],df['InitTeProfile'] , \
+        df.at['alphas'], df.at['betas'], df.at['heatflux'], df.at['Kn_nonloc'] = hc.get_data_qless(df['NNmodel'], df['x'],df['InitTeProfile'] , \
                                                             df['InitgradTeProfile'],df['InitZbarProfile'], df['InitneProfile'], \
                                                             df['InitKnProfile'], int(df['NNmodel'].fcIn.in_features/4), df['scaling'])
                                                                                  #length of the input vector
     # Solution
-    df.at['numberOfTimeStep'] = 10#400
+    df.at['Break_condition'] = 'max_iter' #'max_iter'/'lower_bound'   #Chooses n what condition will newton iteration stop
+    df.at['numberOfTimeStep'] = 100#400
     df.at['deltaX'] = df['x'][11]-df['x'][10]  #for different [i] dx differs at 16th decimal place
-    df.at['maxIteration'] = 1
-    df.at['convergence'] = 1
+    df.at['maxIteration'] = 10
+    df.at['convergence'] = 1e-6
     df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
 
     return df

@@ -11,6 +11,7 @@ import time
 import torch
 from matplotlib import pyplot as plt
 import scipy
+
 def assemble(para, cache):
     """ Assemble linear system Jacobian * dx = F
     
@@ -51,18 +52,18 @@ def assemble(para, cache):
 
     alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
         ##Coulomb logarithm 
-    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x']))
+    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
         ##Thermal velocity (profile)
     v=np.sqrt(T*Kb/para['m_e'])
         ##Lambda mean free path
     lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
     gradT=np.gradient(T,x)
     ##Knudsen number accordint (5)
-    Kn = lamb*gradT/T
+    Kn = -lamb*gradT/T
     kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
     cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
     
-
+    #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
 
     """
     Parameters given by NN:
@@ -74,7 +75,7 @@ def assemble(para, cache):
         heatflux = para['heatflux']
     else:
         scale=para['scaling']
-        alphas, betas, heatflux = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
                                         ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
                                                                                 #size of the input vector
 
@@ -152,6 +153,7 @@ def initialize(para):
     Zbar_init=para['InitZbarProfile']
     ne_init=para['InitneProfile']
     Kn_init=para['InitKnProfile']
+    Kn_nonloc=para['Kn_nonloc']
     T = T_init 
     T0 = T_init
     alpha_init = para['alphas']
@@ -166,6 +168,7 @@ def initialize(para):
     Zbar_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     Kn_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     ne_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
+    Kn_nonloc_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
 
@@ -184,7 +187,8 @@ def initialize(para):
     cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init, 'heatflux':heatflux_init,
              'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt, 'kappa': kappa, 'Zbar':Zbar_init, 
              'ne':ne_init,'Kn':Kn_init, 'Kn_prof':Kn_prof,'ne_prof':ne_prof,'Zbar_prof':Zbar_prof,
-             'Log':pd.DataFrame(), 'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof}
+             'Kn_nonloc': Kn_nonloc,'Kn_nonloc_prof':Kn_nonloc_prof,'Log':pd.DataFrame(), 
+             'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof}
     return cache
 
 
@@ -226,6 +230,7 @@ def storeUpdateResult(cache):
     Zbar_prof = cache['Zbar_prof']   
     Kn_prof = cache['Kn_prof']   
     ne_prof = cache['ne_prof']
+    Kn_nonloc_prof = cache['Kn_nonloc_prof']
 
     alpha = cache['alpha']      #current profile
     beta = cache['beta']
@@ -233,6 +238,7 @@ def storeUpdateResult(cache):
     Zbar = cache['Zbar']
     Kn = cache['Kn']
     ne = cache['ne']
+    Kn_nonloc = cache['Kn_nonloc']
     T = cache['T']
     cache['T0'] = T.copy()
 
@@ -243,6 +249,7 @@ def storeUpdateResult(cache):
     Zbar_prof[:,timeStep] = Zbar.reshape(1,-1)
     Kn_prof[:,timeStep] = Kn.reshape(1,-1)
     ne_prof[:,timeStep] = ne.reshape(1,-1)
+    Kn_nonloc_prof[:,timeStep] = Kn_nonloc.reshape(1,-1)
     return cache
 
 def newtonIteration(para, cache):
@@ -269,29 +276,52 @@ def newtonIteration(para, cache):
     log = cache['Log']
     ts = cache['ts']
 
+    if para['Break_condition']=='max_iter':
+        for n in range(maxIteration):
+            cache = assemble(para, cache)
+            F = cache['F']
+            norm = np.linalg.norm(F)
+            energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+            
+            if n==0: slump, energy_init = np.copy(norm), np.copy(energy)
+            #if norm/np.linalg.norm(cache['T']) < convergence:
+            elif np.abs(energy_init-energy)/energy_init < convergence and n!=0:
+                log.loc[ts,'PhysicalTime'] = cache['time']
+                log.loc[ts,'Iteration'] = n+1
+                log.loc[ts,'Residual'] = np.abs(energy_init-energy)/energy_init
+                break
+            cache = solveLinearSystem(para, cache)
 
-    for n in range(maxIteration):
-        cache = assemble(para, cache)
-        F = cache['F']
-        norm = np.linalg.norm(F)
-        if n==0: slump = np.copy(norm)
-        if norm/np.linalg.norm(cache['T']) < convergence:
-            log.loc[ts,'PhysicalTime'] = cache['time']
-            log.loc[ts,'Iteration'] = n+1
-            log.loc[ts,'Residual'] = norm
-            break
-        cache = solveLinearSystem(para, cache)
+    elif para['Break_condition']=='lower_bound':
+        n=0
+        while True:
+            cache = assemble(para, cache)
+            F = cache['F']
+            norm = np.linalg.norm(F)
+            energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+            if n==0: slump, energy_init = np.copy(norm), np.copy(energy)
+            cache = solveLinearSystem(para, cache)
+            n+=1
+
+            if np.abs(energy_init-energy)/energy_init < convergence:
+                break
+    else: 
+        print('Wrong break condition')
+        quit()
+
     print('[{:3.0f}'.format(ts), ']',
           '[{:6.2E}'.format(cache['time']),']',
           '[{:2.0f}'.format(n+1), ']',
-          '[{:8.2E}'.format(norm/np.mean(1.5*(np.array([para['InitneProfile']]).T)*para['boltzman']*T)),']',
+          #'[{:8.2E}'.format(norm/energy),']',
+          '[{:8.2E}'.format(np.abs(energy_init-energy)/energy_init),']', #shows what portion of energy was lost in one time step
           '[{:8.2E}'.format(norm/slump),']',
           '[{:8.2E}'.format(np.max(cache['beta'])),']',
           '[{:8.2E}'.format(np.max(cache['alpha'])),']',
           '[{:8.2E}'.format(np.min(T)),']',
           '[{:8.2E}'.format(np.max(T)),']',
           #' [','{:8.2E}'.format(np.mean(cache['T'])),']')
-          '[{:8.16E}'.format(np.mean(1.5*para['boltzman']*T*(np.array([para['InitneProfile']]).T))),']')
+          '[{:8.16E}'.format(energy),']')
+    cache['Log']=log #update Log
     return cache
 
 
@@ -329,7 +359,7 @@ def solve(para):
 
 
 def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):  
-
+    
     """
     Takes model and profiles of physical values, scales them and compiles data frame, where every row corresponds to input vector of NN,
     and every next row is assembled of interval moved a one point to the right relativily to the previous row (sliding interval).
@@ -354,11 +384,11 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
     nescaled=(n-scaling['n'].loc['mean'])/scaling['n'].loc['std']
     Zscaled=(Z-scaling['Z'].loc['mean'])/scaling['Z'].loc['std']
 
-    Knmean=np.array([])  #Will contain mean values of Kn for each interval
+    Kn_mean=np.array([])  #Will contain mean values of Kn for each interval
     nonloc_tester=pd.DataFrame(columns=['xmin', 'xmax', 'is loc']) #Will contain information whether the Kn<10e-3 is complied for the whole vector
     numFields = 4 #T, gradT, Z, n
     Qdata=np.empty((0,numFields*lng), int) #2 * rad "#of points in interval" * 5 "for each phsy quantity" + 2 "for Q and beta" 
- 
+    
     for ind, _ in enumerate(x):  #x_min=x[ind], x_max=x[ind+2*rad], x_c=x[ind+rad]
         datapoint=np.array([])  
 
@@ -371,35 +401,40 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
             datapoint=np.append(datapoint, nescaled[ind:ind+lng]) 
             nonloc_tester.loc[len(nonloc_tester.index)]=[x[ind],x[ind+lng], any(np.abs(Kn[ind:ind+lng])<1e-3)]
 
-            Knmean=np.append(Knmean, np.mean(Kn[ind:ind+lng]))
+            Kn_mean=np.append(Kn_mean, np.mean(Kn[ind:ind+lng])) #
             #datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) 
             #datapoint=np.append(datapoint, x[ind:ind+lng])
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
             Qdata=np.append(Qdata,[datapoint], axis=0)
 
+    Kn_nonloc = scipy.signal.convolve(Kn, gaussian_filter(lng, 6), mode='same') #length of the kernel = lng, sigma = 6, 
     heatflux = (model.forward(torch.tensor(Qdata).float())[:,0] * model.scaling['Q']['std'] + model.scaling['Q']['mean']).detach().numpy()
     beta = (model.forward(torch.tensor(Qdata).float())[:,1] * model.scaling['beta']['std'] + model.scaling['beta']['mean']).detach().numpy()
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-    alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy()
+
+    ##OLD INTERFACE using AlphaBetaModel
+    alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
     betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
+    ######
     
     for i in range(int((len(x)-len(alphas))/2)):              
         beta = np.append(beta[0], beta)
         alphas = np.append(alphas[0], alphas)
         betas = np.append(betas[0], betas)
         heatflux = np.append(heatflux[0], heatflux)
-        Knmean = np.append(Knmean[0], Knmean)
+        Kn_mean = np.append(Kn_mean[0], Kn_mean)
 
     for i in range(int((len(x)-(ind-1))/2)):            
         beta = np.append(beta, beta[-1])  
         alphas = np.append(alphas, alphas[-1])
         betas = np.append(betas, betas[-1])
         heatflux = np.append(heatflux, heatflux[-1])
-        Knmean = np.append(Knmean, Knmean[-1])
-    alpha = calc_alpha(heatflux, beta, Z, T, gradT, Knmean)
+        Kn_mean = np.append(Kn_mean, Kn_mean[-1])
 
+    #alpha calculated with 
+    alpha = calc_alpha(heatflux, beta, Z, T, gradT, Kn_nonloc) #Kn_mean
 
-    return alpha,beta,heatflux#scipy.ndimage.gaussian_filter1d(alphas,3), scipy.ndimage.gaussian_filter1d(betas,3), heatflux
+    return alpha, beta, heatflux, Kn_nonloc #Kn_mean
 
 
 
@@ -443,7 +478,7 @@ def calc_alpha(qNN, beta, Z, T, gradT, Knmean):
       * TkeV[:]**beta * gradTkeV[:]
 
     alpha = qNN/local_heatflux_beta_model
-    alpha[np.abs(Knmean)<1e-11]=1
+    alpha[np.abs(Knmean)<1e-3]=1
     
     return alpha  
 
@@ -451,3 +486,7 @@ def calc_alpha(qNN, beta, Z, T, gradT, Knmean):
 #fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
+def gaussian_filter(size,sigma):
+    filter_range = np.linspace(-int(size/2),int(size/2),size)
+    gaussian_filter = [1 / (sigma * np.sqrt(2*np.pi)) * np.exp(-x**2/(2*sigma**2)) for x in filter_range]
+    return gaussian_filter
