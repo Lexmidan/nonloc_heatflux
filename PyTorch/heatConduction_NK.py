@@ -12,131 +12,6 @@ import torch
 from matplotlib import pyplot as plt
 import scipy
 
-def assemble(para, cache):
-    """ Assemble linear system Jacobian * dx = F
-    
-    Process:
-        0. Obtain relevant informations
-        1. Loop over grid:
-            1.1 Deal with BC node at x=0
-            1.2 Deal with BC node at x=L
-            1.3 Deal with interior nodes
-            1.4 Obtain values on imaginary nodes (Ug1 and Ug2)
-                for two BCs
-            1.4 Assemble Jacobian (a diagonal matrix)
-        2. Calculate temperature gradient dT2
-        3. Assemble F
-    
-    Return: dictionary containing cache data
-    """
-
-
-    # BC informations
-    typeX0 = para['x=0 type']
-    valueX0 = para['x=0 value']
-    typeXL = para['x=L type']
-    valueXL = para['x=L value']
-    ne = cache['ne']
-    Z = cache['Zbar']
-    Kn = cache['Kn']
-    Kb = para['boltzman']
-    x = para['x']
-    dx = para['deltaX']
-
-    numberOfNode = para['numberOfNode']
-    # Containers
-    T = cache['T']; T0 = cache['T0']        #let T=T[i,j] then T0=T[i, j-1]
-    F = cache['F']; Jacobian = cache['Jacobian']
-    dt = cache['dt']  
-
-
-    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
-        ##Coulomb logarithm 
-    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
-    
-        ##Thermal velocity (profile)
-    v=np.sqrt(T*Kb/para['m_e'])
-        ##Lambda mean free path
-    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
-    gradT=np.gradient(T,x)
-    ##Knudsen number accordint (5)
-    Kn = -lamb*gradT/T
-    kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
-    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    
-    #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
-
-    """
-    Parameters given by NN:
-    """    
-    
-    if para['NNmodel']==None:
-        alphas = para['alphas']
-        betas = para['betas']
-        heatflux = para['heatflux']
-    else:
-        scale=para['scaling']
-        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
-                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
-                                                                                #size of the input vector
-
-        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
-                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
-        cache['ratio']=ratio
-
-
-    '''    
-    Loop over grid
-    '''
-
-
-    for i in range(0, numberOfNode):
-        # BC node at x=0
-        if i == 0:
-            if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, kappa[i], dx, T[0], alphas[i], betas[i]) #boundary values
-                Jacobian[0][1] = (1/dx**2)*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            elif typeX0 == 'fixedTemperature':
-                Ug1 = utility.fixedValue(valueX0, T[1])
-                Jacobian[0][1] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i]*kappa[i]*Ug1**betas[i]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(Ug1+T[i+1]))
-        # BC node at x=L
-        elif i == numberOfNode-1:
-            if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, kappa[i], dx, T[-1], alphas[i], betas[i])  #boundary values
-                Jacobian[-1][-2] = (1/dx**2)*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            elif typeXL == 'fixedTemperature':
-                Ug2 = utility.fixedValue(valueXL, T[-2])
-                Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i]*kappa[i]*Ug2**betas[i] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+Ug2))  
-        # Interior nodes
-
-        else:   #!!! \alpha_{i+1/2} := alpha[i]
-            Jacobian[i][i+1] = (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            
-            Jacobian[i][i-1] = (1/dx**2)*.5*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+T[i+1]))
-
-
-    # Calculate F (right hand side vector)
-    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
-    F = (3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
-
-    # Store in cache
-    cache['F'] = F; cache['Jacobian'] = Jacobian
-    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
-    cache['coulog'] = coulog
-    return cache
-
-
 def initialize(para):
     """ Initialize key data
     
@@ -214,6 +89,9 @@ def solveLinearSystem(para, cache):
     dT = np.linalg.solve(A, B)
     T = cache['T']
     T = T-dT * relax       #T(j+1)=T(j)+JI``(F)
+
+    
+
     T[np.where(T<=0)]=10
     cache['T'] = T
     cache['dT'] = dT
@@ -269,8 +147,6 @@ def newtonIteration(para, cache):
     
     """
     
-    maxIteration = para['maxIteration']
-    convergence = para['convergence']
 
     T = cache['T'];     #let T=T[i,j] then T0=T[i, j-1] 
     #cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/((para['conductivity']*1.31e10/cache['coulog']*para['tau']**(cache['beta']-5/2))*cache['alpha']*T**2.5))
@@ -278,41 +154,22 @@ def newtonIteration(para, cache):
                                (para['conductivity']*para['alphas']*T**2.5))
     cache['time']+=cache['dt']
     cache['times'] = np.append(cache['times'],cache['time'])
+
+
+    
+    F_onevar= lambda T: F_Newton_Krylov(T, para=para, cache=cache)#c: f(1,2,c)
+    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T0'] )
+
     log = cache['Log']
     ts = cache['ts']
 
-    if para['Break_condition']=='max_iter':
-        for n in range(maxIteration):
-            cache = assemble(para, cache)
-            F = cache['F']
-            norm = np.linalg.norm(F)
-            energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
-            
-            if n==0: slump, energy_init = np.copy(norm), np.copy(energy)
-            #if norm/np.linalg.norm(cache['T']) < convergence:
-            elif np.abs(energy_init-energy)/energy_init < convergence and n!=0:
-                log.loc[ts,'PhysicalTime'] = cache['time']
-                log.loc[ts,'Iteration'] = n+1
-                log.loc[ts,'Residual'] = np.abs(energy_init-energy)/energy_init
-                break
-            cache = solveLinearSystem(para, cache)
-
-    elif para['Break_condition']=='lower_bound':
-        n=0
-        while True:
-            cache = assemble(para, cache)
-            F = cache['F']
-            norm = np.linalg.norm(F)
-            energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
-            if n==0: slump, energy_init = np.copy(norm), np.copy(energy)
-            cache = solveLinearSystem(para, cache)
-            n+=1
-
-            if np.abs(energy_init-energy)/energy_init < convergence:
-                break
-    else: 
-        print('Wrong break condition')
-        quit()
+    ##################TODO: remove these placeholders
+    energy_init=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+    energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+    n=0
+    norm=1
+    slump=1
+    ###########################
 
     print('[{:3.0f}'.format(ts), ']',
           '[{:6.2E}'.format(cache['time']),']',
@@ -531,3 +388,66 @@ def alpha_cor(alpha, Kn, s=2700, p=1):
 
     return alpha_cor
 
+def F_Newton_Krylov(T, para, cache):
+        # BC informations
+    typeX0 = para['x=0 type']
+    valueX0 = para['x=0 value']
+    typeXL = para['x=L type']
+    valueXL = para['x=L value']
+    ne = cache['ne']
+    Z = cache['Zbar']
+    Kn = cache['Kn']
+    Kb = para['boltzman']
+    x = para['x']
+    dx = para['deltaX']
+    dt = cache['dt']  
+    T0 = cache['T0'] 
+
+    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
+    ##Coulomb logarithm 
+    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
+    ##Thermal velocity (profile)
+    v=np.sqrt(T*Kb/para['m_e'])
+    ##Lambda mean free path
+    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
+    gradT=np.gradient(T,x)
+    ##Knudsen number accordint (5)
+    Kn = -lamb*gradT/T
+    kappa = para['conductivity'].values*1.31e10/coulog[:]*para['tau']**(cache['beta']-5/2)
+    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
+    
+    """
+    Parameters given by NN:
+    """    
+    
+    if para['NNmodel']==None:
+        alphas = para['alphas']
+        betas = para['betas']
+        heatflux = para['heatflux']
+    else:
+        scale=para['scaling']
+        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
+                                                                                #size of the input vector
+
+        # Useless for now
+        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
+        cache['ratio']=ratio
+
+
+    if typeX0 == 'heatFlux':
+                Ug1 = utility.fixedGradient(valueX0, kappa[0], dx, T[0], alphas[0], betas[0]) #boundary values
+    elif typeX0 == 'fixedTemperature':
+                Ug1 = utility.fixedValue(valueX0, T[1])
+    if typeXL == 'heatFlux':
+                Ug2 = utility.fixedGradient(valueXL, kappa[-1], dx, T[-1], alphas[-1], betas[-1])  #boundary values
+    elif typeXL == 'fixedTemperature':
+                Ug2 = utility.fixedValue(valueXL, T[-2])
+
+    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
+
+    F=(3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2
+    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
+    cache['coulog'] = coulog
+    return F
