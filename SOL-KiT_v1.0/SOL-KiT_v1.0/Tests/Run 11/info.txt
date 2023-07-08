@@ -1,0 +1,1 @@
+This test is based on Run 11 in the manuscript. INPUT and partial OUTPUT provided. Plotting ION_VEL and DENSITY at timestepst 1500 and 3000 should reproduce Figure 9 in the manuscript. This test is multiprocessor safe, recommended number of processes: 8-16

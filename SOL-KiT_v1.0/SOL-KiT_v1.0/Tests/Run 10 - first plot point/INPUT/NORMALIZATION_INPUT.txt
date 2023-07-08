@@ -1,0 +1,4 @@
+                                    ION_Z =            1.0     Plasma Z 
+                                 ATOMIC_A =            1.0     Atomic mass of main plasma particles 
+                                TEMP_0_EV =           10.0     Temperature normalization (in eV) 
+                                DENSITY_0 =        2.5e+19     Density normalization (in m^-3) 

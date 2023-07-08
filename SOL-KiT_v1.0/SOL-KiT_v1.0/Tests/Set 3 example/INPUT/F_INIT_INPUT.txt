@@ -1,0 +1,21 @@
+ Periodic initialization parameters:
+                                    T_AVG =            1.0     Average temperature 
+                                    T_AMP =         0.0005     Temperature perturbation amplitude 
+                                  T_PHASE =            0.0     Temperature perturbation phase 
+                                   T_FREQ =              1     Temperature perturbation frequency 
+                                 DENS_AVG =            1.0     Average density 
+                                 DENS_AMP =            0.0     Density perturbation amplitude 
+                               DENS_PHASE =            0.0     Density perturbation phase 
+                                DENS_FREQ =              1     Density perturbation frequency 
+
+ Monotonic initialization parameters:
+                                     T_UP =            1.0     Upstream temperature 
+                                    T_DIV =            1.0     Divertor temperature 
+                                  DENS_UP =            1.0     Upstream density 
+                                 DENS_DIV =            1.0     Divertor density 
+                                 NUM_DROP =             17     X_GRID point at which drop/jump happens 
+                        PLASMA_RAMP_WIDTH =              5     Width of plasma exponential ramp in cells 
+
+ Neutral initialization:
+                                NUM_CLOUD =             35     X_GRID point at which neutral cloud starts 
+

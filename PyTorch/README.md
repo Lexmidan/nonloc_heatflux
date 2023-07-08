@@ -2,11 +2,11 @@
 # TODO:
 - [ ] With change of step in `generate_QimpactTrainingData.py`  the length of input vector for NN also changes. Automate the calculation of used features (thus also the length) in `NN_training.py`, `heatConduction.py` and `NN_training.py`
 - [ ] Scaling of `x` in  `generate_QimpactTrainingData.py` ???
+- [ ] FIX THE PROBLEM WITH MODEL SAVING. The model saved as .pkl gives different results than the model saved in cache. This leads to need of training the NN every run of the script (Unless the script is run in `time-evolv-heatflux.ipynb`).
 
 ## Generate the data neseccary for neural network to train
 We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 110`
 
-However, I forgot to include these data to `gitignore.git` and have accidentally uploaded them to this repository
 
 `NN-heatflux.ipynb` and `NN_training.py` contain training part of the neural network, whereas `HeatFluxModel.py` and `HeatFluxData.py` contain the definiotion of the NN itself and data preparation respectevely
 

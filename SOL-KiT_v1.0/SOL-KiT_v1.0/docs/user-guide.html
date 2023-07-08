@@ -1,0 +1,571 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+  "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>User Guide &#8212; SOL-KiT v1.0 documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="author" title="About these documents" href="about.html" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="prev" title="Prerequisites and Setup" href="prerequisites.html" />
+   
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          <div class="body" role="main">
+            
+  <img alt="_images/banner.png" id="user-guide" src="_images/banner.png" />
+<div class="section" id="id1">
+<h1>User Guide<a class="headerlink" href="#id1" title="Permalink to this headline">¶</a></h1>
+<p>Here a user guide for SOL-KiT is given, covering the following:</p>
+<ul class="simple">
+<li>Input file structure</li>
+<li>Normalization used in the code</li>
+<li>Grids used</li>
+<li>Basics of each operator and related switches</li>
+<li>Boundary and Initialization Options</li>
+<li>Output Handling and Solver Options</li>
+</ul>
+<div class="section" id="input-file-structure">
+<h2>Input file structure<a class="headerlink" href="#input-file-structure" title="Permalink to this headline">¶</a></h2>
+<p>The input options for SOL-KiT are contained in .txt files located in the INPUT folder. In this user guide, the names of input variables will be shown in bold, while the filenames will be italic, in the interest of ease of reading. Two kinds of input files exist:</p>
+<ul class="simple">
+<li>General input files:<ul>
+<li><em>F_INIT_INPUT.txt</em></li>
+<li><em>GRID_INPUT.txt</em></li>
+<li><em>NEUT_AND_HEAT_INPUT.txt</em></li>
+<li><em>NORMALIZATION_INPUT.txt</em></li>
+<li><em>SOLVER_PARAMS_INPUT.txt</em></li>
+<li><em>SWITCHES_INPUT.txt</em></li>
+</ul>
+</li>
+<li>Custom initialization input files:<ul>
+<li><em>DENS_INPUT.txt</em></li>
+<li><em>ION_VEL_INPUT.txt</em></li>
+<li><em>NEUTRAL_DENS_INPUT.txt</em></li>
+<li><em>TEMPERATURE_INPUT.txt</em></li>
+<li><em>X_GRID_INPUT.txt</em></li>
+<li><em>Z_PROFILE_INPUT.txt</em></li>
+</ul>
+</li>
+</ul>
+<p>In addition, the file  <em>H_DIPOLE_TRANS_PROB_INPUT.txt</em> contains dipole transition probabilities from the NIST database used in the code.</p>
+<p>Custom initialization files will be covered in the Boundary and Initialization Options section.</p>
+<p>General input files and their contents will be covered as needed in the following sections.</p>
+</div>
+<div class="section" id="normalization">
+<h2>Normalization<a class="headerlink" href="#normalization" title="Permalink to this headline">¶</a></h2>
+<p>Basic normalization parameters are all contained in the <em>NORMALIZATION_INPUT.txt</em> file. These are:</p>
+<ul class="simple">
+<li>The ion charge <img class="math" src="_images/math/bcb2457ac9d8995a4f34d57cadac7ecbbe58f3bd.png" alt="Z"/> (<strong>ION_Z</strong>)</li>
+<li>The ion atomic mass <img class="math" src="_images/math/0043fe6507e9b1d112e07a2801e24927e267dd50.png" alt="A"/> (<strong>ATOMIC_A</strong>)</li>
+<li>Temperature normalization <img class="math" src="_images/math/9b8eafb3ad26e885d37aac25d8735f79e44b6a00.png" alt="T_0"/> in eV (<strong>TEMP_0_EV</strong>)</li>
+<li>Density normalization <img class="math" src="_images/math/3b78f198bc9adf1b3d09796fea98f76696a20aa4.png" alt="n_0"/> in <img class="math" src="_images/math/cbecfc733ca9dedc245ef8f340198b5486a9755e.png" alt="m^{-3}"/> (<strong>DENSITY_0</strong>)</li>
+</ul>
+<p>All other normalizations are derived from the above parameters:</p>
+<ul class="simple">
+<li>Velocity - thermal velocity for <img class="math" src="_images/math/93177dd835c3560183a7fe31fdc1e0386ff739f6.png" alt="T = T_0"/> , <img class="math" src="_images/math/2b5c560ad9d8b94d673a58fa134f2760fdef0de1.png" alt="v_{th} = \sqrt{2T_0[J]/m_e}"/> where <img class="math" src="_images/math/2ba5781b7f01aa385426a30b01d8a60d805c1b12.png" alt="m_e"/> is the electron mass, and <img class="math" src="_images/math/b33c1ea83f9beab5bc1307d0d5dcbced939b88e3.png" alt="T_0[J]"/> is the normalization temperature in Joules.</li>
+<li>Time - 90 degreee thermal electron-ion collision time, <img class="math" src="_images/math/b951635ecbb54ae005dc002c01f70f2d2ebc5758.png" alt="t_0 = (\Gamma_{ei}(n_0,T_0)n_0/v_{th}^3/Z)^{-1}"/> where
+<img class="math" src="_images/math/9a02717de50c6a801c729b672fef7e82024746e7.png" alt="\Gamma_{ei} (n,T)= (Ze^2)^2\ln\Lambda_{ei}(n_0,T_0,Z)/(4\pi(m_e\epsilon_0)^2)"/>. The Coulomb logarithm <img class="math" src="_images/math/aee21390d94780026a07aa4b2cdd4f1171caf9e4.png" alt="\ln\Lambda_{ei}(n_0,T_0,Z)"/> value is taken from the NRL formulary.</li>
+<li>Distance - 90 degree thermal electron-ion mfp , <img class="math" src="_images/math/301614b506f37865b6bf6604742abdb7088b9a56.png" alt="x_0 = v_{th} t_0"/>.</li>
+<li>Distribution function - <img class="math" src="_images/math/59931b7a2f662198b3a4a8516ce0ef08c8675db4.png" alt="n_p/v_{th}^3"/>.</li>
+<li>Electric field - <img class="math" src="_images/math/364031b287cf30eb497e1d83b7d8caac09069ead.png" alt="E_0 = m_e v_{th} /(et_0)"/>.</li>
+<li>Heat flux - <img class="math" src="_images/math/bb3aba8cdff0f72d15cf1825cdeba95b7b55198d.png" alt="q_0 = m_e n_0 v_{th}^3"/>.</li>
+</ul>
+</div>
+<div class="section" id="grids">
+<h2>Grids<a class="headerlink" href="#grids" title="Permalink to this headline">¶</a></h2>
+<p>Before defining the discrete grids used in the code, it is necessary to note that the code uses a spherical harmonic decomposition of the distribution function</p>
+<div class="math">
+<p><img src="_images/math/884186ff5798187634d97ee1986572cf809fe610.png" alt="f(v,\theta,\varphi) = \sum_{l=0}^{\infty}{ \sum_{m=-l}^{l} {f_l^m(v) P_l^{|m|}(\cos\theta)e^{im\varphi}}}"/></p>
+</div><p>where the spherical coordinates are defined as</p>
+<div class="math">
+<p><img src="_images/math/a0b77a42d2dfe61b08a473e84679fd17324516f9.png" alt="v = \sqrt{v_x^2 + v_y^2 + v_z^2}, \quad \quad
+\theta = \arccos(v_x/v), \quad \quad
+\varphi = \arctan(v_z/v_y),"/></p>
+</div><p>with the <img class="math" src="_images/math/a59f68a4202623bb859a7093f0316bf466e6f75d.png" alt="x"/>-axis being directed along the magnetic field line. The decomposition allows the separation of hydrodynamic quantities as moments of different harmonics. For a scalar function <img class="math" src="_images/math/0ab5c642055cbbfd76e4035742276c4a75b0538a.png" alt="\phi(v)"/></p>
+<div class="math">
+<p><img src="_images/math/0899c24a7c1c713c7bde9e7719ccbc079fcc1bbc.png" alt="\int \phi f(\vec{v})d\vec{v} = 4 \pi \int_0^{\infty} \phi f_0^0(v) v^2 dv,"/></p>
+</div><p>while for a vector function <img class="math" src="_images/math/83a68dcb42ddfdda1fe2593771f04c2cde2dfb72.png" alt="\vec{a}(v)"/></p>
+<div class="math">
+<p><img src="_images/math/36a4299bac03bcc47b0e8d80ec59f0e1843659ba.png" alt="\int \vec{a} f(\vec{v})d\vec{v} = \frac{4 \pi}{3} \int_0^{\infty} ||a|| \begin{pmatrix}f_1^0\\2Re(f_1^1)\\-2Im(f_1^1)\end{pmatrix} v ^2 dv"/></p>
+</div><p>and similarly for higher order tensors (cf. I. P. Shkarofsky, T. W. Johnston, B. M. P., The Particle Kinetics of Plasmas, Addison Wesley, 1966.). However, since we’re treating parallel transport along a field line, and our system has azymuthal symmetry, all harmonics with <img class="math" src="_images/math/9fe942a3b863852d1099e24ee69ed6068dce0933.png" alt="m&gt;0"/> are zero, and the decomposition reduces to a Legendre decomposition.</p>
+<p>Grid input data are given in the <em>GRID_INPUT.txt</em> file, and are bundled with timestep data. The equations are solved using a fully implicit backwards Euler method, with either fixed or adaptive timesteps. The timestep inputs are:</p>
+<ul class="simple">
+<li>The number of timesteps (<strong>TIMESTEP_NUM</strong>).</li>
+<li>The number of shorter pretimesteps (<strong>PRETIMESTEP_NUM</strong>), when fast temporal variation is expected at the start of the simulation.</li>
+<li>The (relative) timestep length, <img class="math" src="_images/math/ec002955bdf95ee9869878fbad4f80fc98539359.png" alt="\Delta t"/> (<strong>dt</strong>), which is adaptive if <strong>ADAPTIVE_TIMESTEP_SWITCH</strong> in <em>SWITCHES_INPUT.txt</em> is set to true (the timestep is then rescaled to roughly the shortest e-e collisional timescale).</li>
+<li>The (relative) pretimestep length (<strong>pre_dt</strong>)</li>
+<li>The save interval (<strong>T_SAVE</strong>), marking how often the code outputs data (for example, if <strong>T_SAVE</strong> = 10, the code outputs every tenth timestep)</li>
+</ul>
+<p>The timestep input data is followed by <strong>L_MAX</strong> - the highest <img class="math" src="_images/math/b359488b993294ebbc2c7b30ab8f749dcbc6826d.png" alt="l"/>-harmonic resolved in the code.</p>
+<p>The velocity grid is characterized by the following three parameters:</p>
+<ul class="simple">
+<li>The number of velocity cells, <img class="math" src="_images/math/f6465423062ee0b3f71a09e8c357c0623d3369d9.png" alt="N_v"/> (<strong>NUM_V</strong>).</li>
+<li>The width of the first cell, <img class="math" src="_images/math/fdff29e02fe5e6c7fe50cc4268b5fbc407eebd44.png" alt="\Delta v_{1}"/> (<strong>dv</strong>).</li>
+<li>The velocity grid width multiplier, <img class="math" src="_images/math/659cba87d79c331599a2e6e680eb3c607104cdf7.png" alt="c_v"/> (<strong>V_GRID_MULT</strong>).</li>
+</ul>
+<p>Using these three, the velocity grid is defined as</p>
+<div class="math">
+<p><img src="_images/math/8b95fb7332409b7e8a02c472147348f141df5614.png" alt="v_1 = \Delta v_{1} / 2,"/></p>
+</div><div class="math">
+<p><img src="_images/math/8fae0c383a748dba1418ea319f3400b11c78e635.png" alt="\Delta v_{n} = c_v \Delta v_{n-1},"/></p>
+</div><div class="math">
+<p><img src="_images/math/bf94d78077c1b2ed0d93313146e3767cadd9d828.png" alt="v_n = v_{n-1} + \frac{1}{2}(\Delta v_{n} + \Delta v_{n-1}),"/></p>
+</div><p>with <img class="math" src="_images/math/51b8f583e5d893bc2fcd28feb6f72828a99822d0.png" alt="1&lt;n&lt;N_v"/>. This way, both a geometric and a uniform velocity grid can be treated.</p>
+<p>The spatial grid is characterized by the following parameters:</p>
+<ul class="simple">
+<li>The number of spatial cells, <img class="math" src="_images/math/be212f4bd9d05ef8cd8949a5610bc3ca04e750f7.png" alt="N_c"/> (<strong>NUM_C</strong>).</li>
+<li>The width of the first cell, <img class="math" src="_images/math/fe0ad3858e4926b254189877a25e01b8321e7615.png" alt="\Delta x_{1}"/> (<strong>dx</strong>).</li>
+<li>The width of the last cell, <img class="math" src="_images/math/e021e7f0abe5c9b3c74a65ec3f3fbb894fe4e7af.png" alt="\Delta x_{small}"/> (<strong>SMALL_dx</strong>), used when <strong>LOGARITHMIC_GRID_SWITCH</strong> is set to true.</li>
+</ul>
+<p>The spatial grid is staggered, with cell centres and boundaries treated differently. The following is the list of quantities evolved in cell centres and on cell boundaries:</p>
+<ul>
+<li><p class="first">Cell centres:</p>
+<blockquote>
+<div><ul class="simple">
+<li><img class="math" src="_images/math/aea0448aa318b22d4525c8bbba3a7567aa5015cc.png" alt="f_l"/> with even <img class="math" src="_images/math/b359488b993294ebbc2c7b30ab8f749dcbc6826d.png" alt="l"/></li>
+<li>neutral densities</li>
+<li>ion density (if cold fluid ion mode)</li>
+</ul>
+</div></blockquote>
+</li>
+<li><dl class="first docutils">
+<dt>Cell boundaries:</dt><dd><ul class="simple">
+<li><img class="math" src="_images/math/aea0448aa318b22d4525c8bbba3a7567aa5015cc.png" alt="f_l"/> with odd <img class="math" src="_images/math/b359488b993294ebbc2c7b30ab8f749dcbc6826d.png" alt="l"/></li>
+<li><img class="math" src="_images/math/4b6222b865b812d2a59368cd1629eed6b54454d5.png" alt="E"/>-field</li>
+<li>ion velocity (if cold fluid ion mode)</li>
+</ul>
+</dd>
+</dl>
+</li>
+</ul>
+<p>Any quantities not evolved in centres are linearly interpolated from neighbouring boundaries, and vice versa.</p>
+<p>The spatial grid is either uniform, uniform with a small last cell with width <img class="math" src="_images/math/e021e7f0abe5c9b3c74a65ec3f3fbb894fe4e7af.png" alt="\Delta x_{small}"/>, or logarithmic with:</p>
+<div class="math">
+<p><img src="_images/math/3609bfd98cf8b14ade5afcc64401f34816eb7905.png" alt="x_1 = 0,"/></p>
+</div><div class="math">
+<p><img src="_images/math/0c8cc52938039c43963eac9c006c22eaff06e0c7.png" alt="x_{k&gt;1} = x_{k-1} + \frac{\Delta x_{1}}{2} e^{-(k-1)b}"/></p>
+</div><p>where</p>
+<div class="math">
+<p><img src="_images/math/00b0dd86efd98534354ad5c2f9d12f3b5b62b0e9.png" alt="b = \frac{1}{N_x - 1} \ln(\frac{\Delta x_{1}}{\Delta x_{small}})."/></p>
+</div><p>Here <img class="math" src="_images/math/66f3707778ef19942b4bb02f18176926e7df7c96.png" alt="N_x"/> is the total number of spatial points (cell centres and boundaries), and differs for different boundary conditions (see Boundary conditions below). The grid can also be loaded in from <em>X_GRID_INPUT.txt</em>  by setting <strong>X_GRID_FROM_FILE</strong> in <em>SWITCHES_INPUT.txt</em> to true.</p>
+</div>
+<div class="section" id="general-equations">
+<h2>General equations<a class="headerlink" href="#general-equations" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT solves a coupled set of equations, starting with, but not limited to, the 1D kinetic equation for electrons:</p>
+<div class="math" id="equation-1">
+<p><span class="eqno">(1)<a class="headerlink" href="#equation-1" title="Permalink to this equation">¶</a></span><img src="_images/math/a3fde2f73ec78a63825cd317861f383c344a335f.png" alt="\frac{\partial f}{\partial t} + v_x \frac{\partial f}{\partial x} - \frac{e}{m_e}E\frac{\partial f}{\partial v_x} = C[f]."/></p>
+</div><p>On the LHS are the Vlasov terms, governing advection in space and velocity space. On the RHS is a collection of operators, mainly collision operators. This equation is decomposed using Legendre polynomials (as shown above) into a set of equations for the distribution harmonics <img class="math" src="_images/math/aea0448aa318b22d4525c8bbba3a7567aa5015cc.png" alt="f_l"/>. This is the minimal set of unknowns SOL-KiT can solve for.</p>
+<p>The set of unknowns can be expanded by adding the following quantities:</p>
+<ul class="simple">
+<li>The electric field along the <img class="math" src="_images/math/a59f68a4202623bb859a7093f0316bf466e6f75d.png" alt="x"/>-direction, <img class="math" src="_images/math/4b6222b865b812d2a59368cd1629eed6b54454d5.png" alt="E"/></li>
+<li>Densities of neutral hydrogen isotope atomic states, <img class="math" src="_images/math/0346ce8d046f31336bb48a8ae28c8dd8b80a5b36.png" alt="n_b"/>, for any number of states (see below)</li>
+<li>Ion density and flow velocity, <img class="math" src="_images/math/4fbb0705523f8fdd2c3c5f55e4f8c4a9a46f18a6.png" alt="n_i"/> and <img class="math" src="_images/math/21d924acd9c2a69519517fb0584c1d74dade3023.png" alt="u_i"/>, when treating ions as a fluid</li>
+<li>Electron density, temperature, and flow velocity, when treating electrons as a fluid. In this case the distribution harmonics <img class="math" src="_images/math/aea0448aa318b22d4525c8bbba3a7567aa5015cc.png" alt="f_l"/> are present in the unknown vector, but are not evolved. Instead, the electrons are treated as a slowly drifting Maxwellian.</li>
+</ul>
+<p>To obtain the electric field, we solve the Ampere-Maxwell equation:</p>
+<div class="math" id="equation-2">
+<p><span class="eqno">(2)<a class="headerlink" href="#equation-2" title="Permalink to this equation">¶</a></span><img src="_images/math/168e4e01c4cdd1d28e38cbd358682fe9b8f65a60.png" alt="\frac{\partial E}{\partial t} = - \frac{1}{\epsilon_0}\left(j_e + qn_i u_i\right),"/></p>
+</div><p>where <img class="math" src="_images/math/e5ac7dcf0bc2e769f25f52cc18b239f711a88a5c.png" alt="j_e"/> is calculated by taking the appropriate moment of the electron distribution function.</p>
+<p>To calculate the ion density and flow velocity we treat it as either a cold fluid (<img class="math" src="_images/math/01ee375a00c053b5fba0460120689db88d4cd462.png" alt="T_i=0"/>) or with <img class="math" src="_images/math/d5b8f0a14a1e0311c14b18672fc5b3dc359d507c.png" alt="T_i=T_e"/>. Density evolution is given by the continuity equation:</p>
+<div class="math" id="equation-3">
+<p><span class="eqno">(3)<a class="headerlink" href="#equation-3" title="Permalink to this equation">¶</a></span><img src="_images/math/8e3f26cd5d7dc5db326b8dcaa9ae3218b04147a5.png" alt="\frac{\partial n_i}{\partial t} + \frac{\partial (n_i u_i)}{\partial x} = S ,"/></p>
+</div><p>while velocity is governed by the momentum equation</p>
+<div class="math" id="equation-4">
+<p><span class="eqno">(4)<a class="headerlink" href="#equation-4" title="Permalink to this equation">¶</a></span><img src="_images/math/92b59d63aca0a360e901c3a4e61374576198ba6d.png" alt="\frac{\partial u_i}{\partial t} = - u_i  \frac{\partial u_i}{\partial x}  + \frac{q}{m_i} E + R_{ie} + R_{CX}- \frac{S}{n_i}u_i - \frac{1}{m_i n_i}\frac{\partial (n_i T_i)}{\partial x}."/></p>
+</div><p>The <img class="math" src="_images/math/6856754377961ebdf9d0ee497b0ac9e9003cecc1.png" alt="R_{ie}"/> term is the drag felt by the ions due to collisions with electrons, while <img class="math" src="_images/math/fb8ccc4c36b68e38680b68016473a630edc0e0f4.png" alt="S_i"/> is the ion source term due to atomic processes. <img class="math" src="_images/math/4260bbf4ba74dbceae9710b768c7449317e18ad5.png" alt="R_{CX}"/> is a simple charge exchange drag operator assuming cold ions and neutrals with a constant CX cross-section.</p>
+<p>In order to properly treat atomic processes we can track an arbitrary number of states of hydrogen isotopes. This is done using the following diffusive-reactive Collisional-Radiative model:</p>
+<div class="math" id="equation-5">
+<p><span class="eqno">(5)<a class="headerlink" href="#equation-5" title="Permalink to this equation">¶</a></span><img src="_images/math/77b87fd9b329534f345f02091e6c930aa66896c3.png" alt="\frac{\partial n_b}{\partial t} &amp;=  \frac{\partial}{\partial x}\left(D_b \frac{\partial  n_b}{\partial x}\right) + \sum_{b'&lt;b} \left[  K_{b' \rightarrow b}^e n_{b'}n_e-A_{b \rightarrow b'}n_b - K_{b \rightarrow b'}^e n_b n_e \right] \\ &amp;+ \sum_{b'&gt;b} \left[K_{b' \rightarrow b}^e n_{b'} n_e + A_{b' \rightarrow b} n_{b'} - K_{b \rightarrow b'}^e n_b n_e\right] - K_{b}^{ion} n_b +  \alpha_b n_e^2n_i + \beta_b n_e n_i,"/></p>
+</div><p>where <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/> is the index of the atomic state, and the terms are the following:</p>
+<ul class="simple">
+<li>Excitation rate due to electron impact from state <img class="math" src="_images/math/bd9d9c7512c898e0a254a0882184197bc1bd9c9f.png" alt="a"/> to state <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/>, <img class="math" src="_images/math/28903b2df9c74f5b9aa5a2046176b58b34a0f608.png" alt="K_{a \rightarrow b}^e"/></li>
+<li>Ionization rate due to electron impact from state <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/>, <img class="math" src="_images/math/b0c0ad4daddd823f37b0636f34af5321e393e2a9.png" alt="K_{b}^{ion}"/></li>
+<li>Spontaneous transition rate from state from state <img class="math" src="_images/math/bd9d9c7512c898e0a254a0882184197bc1bd9c9f.png" alt="a"/> to state <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/>, <img class="math" src="_images/math/fd4f9412f9f5ba1dcb95b183d1688e8f9fd49010.png" alt="A_{a \rightarrow b}"/></li>
+<li>Three-body recombination rate into state <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/>, <img class="math" src="_images/math/e17500215a109af943da6115283349718a4d4a7d.png" alt="\alpha_b"/></li>
+<li>Radiative recombination rate into state <img class="math" src="_images/math/57c9d14bb082716df9000146882ce365335d08f1.png" alt="b"/>, <img class="math" src="_images/math/081c7442c36dd9e824e1a58c88e43322bf8b3754.png" alt="\beta_b"/></li>
+</ul>
+<p>When treating the electrons as a fluid, the following equations are solved instead of the full kinetic set.</p>
+<p>The electron continuity equation,</p>
+<div class="math">
+<p><img src="_images/math/6f770bdba7ed77f359d66efb6ef563ca0962688a.png" alt="\frac{\partial n_e}{\partial t} + \frac{\partial (n_e u_e)}{\partial x} = S,"/></p>
+</div><p>the electron parallel velocity equation,</p>
+<div class="math">
+<p><img src="_images/math/1d11557f1b00905deee58d151dee8fed117c202b.png" alt="\frac{\partial u_e}{\partial t} = - u_e  \frac{\partial u_e}{\partial x}  - \frac{e}{m_e} E + \frac{R_{ei}+R_{en}}{m_e n_e} - \frac{S}{n_e}u_e - \frac{1}{m_e n_e}\frac{\partial( n_e k T_e)}{\partial x},"/></p>
+</div><p>and the electron temperature equation,</p>
+<div class="math">
+<p><img src="_images/math/3e1541531b6de29911e7912fdcba49ae6d12e9e7.png" alt="\frac{\partial kT_e}{\partial t} = - u_e  \frac{\partial kT_e}{\partial x}  + \frac{2}{3} \left[\frac{Q}{n_e} - kT_e\frac{\partial u_e}{\partial x} - \frac{1}{n_e}\frac{\partial q_e}{\partial x} - \frac{S}{n_e}\left(\frac{3}{2}kT_e-\frac{m_eu_e^2}{2}\right) - \frac{u_e (R_{ei}+R_{en})}{m_en_e}\right]."/></p>
+</div></div>
+<div class="section" id="collision-operators">
+<h2>Collision operators<a class="headerlink" href="#collision-operators" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT has a rich set of collision operators. Here they will be listed, and their basic properties covered.</p>
+<p>The collisions treated can be divided into Coulomb and electron-neutral collisions. Coulomb collision operators included are:</p>
+<ul class="simple">
+<li>Electron-electron collisions for the <img class="math" src="_images/math/264df287af959833f897078bd32da21d22b4670d.png" alt="l=0"/> harmonic (responsible for relaxation to Maxwellian)</li>
+<li>Electron-electron collisions for <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonics (for <img class="math" src="_images/math/9f3bae0c1c5490c0a05f109b4cd065c8894870eb.png" alt="l=1"/> they redistribute momentum between electrons)</li>
+<li>Electron-ion collisions for <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonic (these reduce anisotropy and allow us to truncate the harmonic decomposition)</li>
+</ul>
+<p>Included electron-neutral collision operators are:</p>
+<ul class="simple">
+<li>Elastic collision operators for all harmonics  <a class="footnote-reference" href="#f1" id="id2">[1]</a> (cool electrons and reduce anisotropy)</li>
+<li>Excitation and de-excitation collisions (particle conserving inelastic collisions)</li>
+<li>Ionization and 3-body recombination collisions (particle creating/destroying inelastic collisions)</li>
+</ul>
+</div>
+<div class="section" id="other-operators">
+<h2>Other operators<a class="headerlink" href="#other-operators" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT supports energy and particle source operators, as well as a diffusion operator for the neutrals.</p>
+<p>The heating operator is diffusive, and acts on the <img class="math" src="_images/math/264df287af959833f897078bd32da21d22b4670d.png" alt="l=0"/> harmonic, meaning the heating is isotropic. It’s given by</p>
+<div class="math">
+<p><img src="_images/math/20bbb3e0d183d0ec2fd33e5177159c9ad15a9a72.png" alt="\left(\frac{\partial f_0}{\partial t}\right)_{heating} = \Theta(L_h - x) D(t) \frac{1}{3v^2} \frac{\partial}{\partial v}v^2\frac{\partial f_0}{\partial v},"/></p>
+</div><p>where <img class="math" src="_images/math/3b5932c3a5f3f9986157541718b1e1c11d9f96e0.png" alt="L_h"/> is the lenght of the heating region upstream (from <img class="math" src="_images/math/a098f6561c6f5328410f2b9133b9db7b9f08e663.png" alt="x=0"/>) and where</p>
+<div class="math">
+<p><img src="_images/math/aa289c57700bc2ddfa802b528f6a072175d702c9.png" alt="D(t) = \frac{W_h(t)}{m_e  \int_0^{L_h} n_e(x,t)dx},"/></p>
+</div><p>with <img class="math" src="_images/math/ef165390de6c4a88143b57fac167e95a035d27dc.png" alt="W_h(t)"/> being the heating power flux. The heating operator is currently uniform in space and has a step function type time dependance (after some time it can be turned off).</p>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">The heating operator, while designed to leave as little footprint as possible, does deform the distribution function away from Maxwellian.</p>
+</div>
+<p>The particle source operators simply provide a Maxwellian source of particles, either at a set temperature, or with the background temperature of the electrons.</p>
+<p>Finally, the diffusion operator for state b is given as</p>
+<div class="math">
+<p><img src="_images/math/c90c0e88a6b35750be1ddd951128138421168a81.png" alt="\left(\frac{\partial n_b}{\partial t}\right)_{diff} = - \frac{\partial}{\partial x}\left(D \frac{\partial  n_b}{\partial x}\right),"/></p>
+</div><p>where</p>
+<div class="math">
+<p><img src="_images/math/a59f81176dd2ec9e50ca3b50dea8e9fe0feafc08.png" alt="D_b = \frac{v_{tn}}{2((n_i+n)\sigma_{el}+\sigma_{CX,b}n_i)}"/></p>
+</div><p>with the elastic collision cross-section simply taken to be <img class="math" src="_images/math/f8096a588adce438c9cd065ebfa529346fb590df.png" alt="\sigma_{el}=\pi a_0^2"/> (<img class="math" src="_images/math/d1a15392374eb2875fc3efa1ae555846991e0553.png" alt="a_0"/> being the Bohr radius). <img class="math" src="_images/math/74b00c06ceaf703aea057eeded7d6544b96f0051.png" alt="v_{tn}"/> is the thermal speed of neutrals, and with the neutral temperature specified as input (see below). <img class="math" src="_images/math/b570feb6fc116b67b6ffeb7b39f119ff8ce262cf.png" alt="\sigma_{CX,b}"/> is the charge-exchange cross section for the b-th neutral state.</p>
+</div>
+<div class="section" id="configuring-the-physics-operators">
+<h2>Configuring the physics operators<a class="headerlink" href="#configuring-the-physics-operators" title="Permalink to this headline">¶</a></h2>
+<p>Here the switches and input variables for the various operators mentioned above will be presented, with their location in the input files and any notable usage rules covered.</p>
+<p>Starting with the Ampere-Maxwell law and the LHS of equation (1), the first three switches in the <em>SWITCHES_INPUT.txt</em> file are:</p>
+<ul class="simple">
+<li><strong>MAXWELL_SWITCH</strong> - Turns on solving for the electric field using Ampere-Maxwell’s law</li>
+<li><strong>X_ADV_SWITCH</strong> - Turns on spatial advection (the second LHS term of (1))</li>
+<li><strong>E_ADV_SWITCH</strong> - Turns on velocity space advection due to the electric field (third LHS term of (1))</li>
+</ul>
+<p>Coulomb collisions are all governed by the following four switches:</p>
+<ul class="simple">
+<li><strong>COLL_EE_0_SWITCH</strong> - Turns on electron-electron collisions for <img class="math" src="_images/math/264df287af959833f897078bd32da21d22b4670d.png" alt="l=0"/> harmonic</li>
+<li><strong>COLL_EE_L_SWITCH</strong> - Turns on electron-electron collisions for <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonics</li>
+<li><strong>DIAG_EE_L_SWITCH</strong> - Use only tridiagonal matrix elements in e-e collisions for higher harmonics (used for speed-up, sacrificing accuracy)</li>
+<li><strong>COLL_EI_L_SWITCH</strong> - Turns on electron-ion collisions for <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonics</li>
+</ul>
+<p>In order to use electron-neutral collisions, neutrals must first be tracked. This is done by setting <strong>NEUTRAL_TRACK_SWITCH</strong> to true. Neutral parameters can be set up in <em>NEUT_AND_HEAT_INPUT.txt</em>, and are</p>
+<ul class="simple">
+<li><strong>NUM_NEUTRALS</strong> - Number of tracked neutral states (including ground state)</li>
+<li><strong>NUM_CS_ANGLES</strong> - Number of angles used when numerically calculating Legendre moments of cross-sections (safe to leave at default - 72)</li>
+<li><strong>NEUTRAL_DENSITY</strong> - Reference neutral density (in normalized units, used in some initializations)</li>
+<li><strong>NEUTRAL_TEMP</strong> - Neutral temperature (in normaized units, used in electron-neutral elastic collisions and in neutral diffusion)</li>
+<li><strong>SIGMA_EL</strong> - Electron-neutral elastic cross-section (in units of <img class="math" src="_images/math/fbbe83bd2c16a01b72ad852e31c6533dead86cc2.png" alt="\pi a_0^2"/> - default 1.00)</li>
+</ul>
+<p>Electron-neutral collision operators are set using five switches:</p>
+<ul class="simple">
+<li><strong>COLL_EN_EL_0_SWITCH</strong> - Turns on elastic electron-neutral collisions for <img class="math" src="_images/math/264df287af959833f897078bd32da21d22b4670d.png" alt="l=0"/> harmonic</li>
+<li><strong>COLL_EN_EL_L_SWITCH</strong> - Turns on elastic electron-neutral collisions for <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonics</li>
+<li><strong>COLL_EN_EX</strong> - Turns on electron impact (de)excitation and spontaneous emission in both the kinetic equation and in the collisional-radiative model</li>
+<li><strong>COLL_EN_ION</strong> - Turns on electron impact ionization in both electron/ion equations and collisional-radiative model</li>
+<li><strong>COLL_RECOMB</strong> - Turns on radiative and 3-body recombination in both electron/ion equations and collisional-radiative model</li>
+</ul>
+<p>In order to speed up inverse process cross-section calculation, it is possible to turn off its iteration, and use lagged values. This is accomplished by setting <strong>FAST_DETAILED_BALANCE_SWITCH</strong> to true.</p>
+<p>Diffusion of the neutrals is governed by <strong>NEUTRAL_DIFFUSION_SWITCH</strong>.</p>
+<p>Heating can be turned on with <strong>HEATING_SWITCH</strong>, and the parameters determining it are in <em>NEUT_AND_HEAT_INPUT.txt</em>, and are</p>
+<ul class="simple">
+<li><strong>N_HEATING</strong> - Number of heated upstream cell centres (determines <img class="math" src="_images/math/3b5932c3a5f3f9986157541718b1e1c11d9f96e0.png" alt="L_h"/>)</li>
+<li><strong>T_HEATING</strong> - Last heating timestep (after which heating is turned off)</li>
+<li><strong>HEAT_POWER</strong> - Heating power flux (in  <img class="math" src="_images/math/d33ef83e2bffa063f82ed62de61206e4a3fdfc94.png" alt="MW/m^2"/>)</li>
+</ul>
+<p>The particle source can be turned on using <strong>PART_SOURCE_SWITCH</strong>, with its parameters in <em>NEUT_AND_HEAT_INPUT.txt</em></p>
+<ul class="simple">
+<li><strong>N_PART_SOURCE</strong> - Number of upstream source cell centres</li>
+<li><strong>T_PART_SOURCE</strong> - Last source timestep (after which the source is turned off)</li>
+<li><strong>P_FLUX_IN</strong> - Effective input flux (in normalized units <img class="math" src="_images/math/5416165337b2cc9a34dfdaff639371f5808f94d4.png" alt="n_p v_{th}"/>)</li>
+<li><strong>TEMP_PART_SOURCE</strong> - Source temperature (in normalized units) if not using background temperature by setting <strong>PART_SOURCE_BACKGROUND_TEMP_SWITCH</strong> to true.</li>
+</ul>
+<p>Fluid ion equations are governed by</p>
+<ul class="simple">
+<li><strong>COLD_ION_FLUID_SWITCH</strong> - Turn on fluid ions (cold)</li>
+<li><strong>ION_CONT_OFF_SWITCH</strong> - Turn off ion continuity equation and force n_i = n_e</li>
+<li><strong>ION_CONV_UPWINDING_SWITCH</strong> - Use first order upwinding for ion convection term (applied to fluid electron terms if present)</li>
+<li><strong>SIMPLE_CX_SWITCH</strong> - Include simple (cold ion, cold neutral, constant cross-section) charge exchange</li>
+<li><strong>ION_EL_TEMP_SWITCH</strong> - Turn on ion pressure gradient term with <img class="math" src="_images/math/885208fe124f0414fcd67cb15a532d9167341407.png" alt="T_i = T_e"/></li>
+</ul>
+<p>Finally, both electrons and ions are treated as a fluid when <strong>FULL_FLUID_MODE</strong> is set to true.</p>
+</div>
+<div class="section" id="boundary-options-and-operators">
+<h2>Boundary options and operators<a class="headerlink" href="#boundary-options-and-operators" title="Permalink to this headline">¶</a></h2>
+<p>Three general options for boundary conditions are available:</p>
+<ul class="simple">
+<li>Fixed</li>
+<li>Reflective (no-flow)</li>
+<li>Periodic</li>
+</ul>
+<p>They are set using the following switches:</p>
+<ul class="simple">
+<li><strong>PERIODIC_BOUNDARY_SWITCH</strong> - Turn on periodic boundaries (incompatible with other boundary options)</li>
+<li><strong>FIXED_BOUNDARY_UP_SWITCH</strong> - Fix upstream boundary cell centre to initial values</li>
+<li><strong>FIXED_BOUNDARY_DIV_SWITCH</strong> - Fix downstream/divertor boundary cell centre to initial values</li>
+<li><strong>NO_FLOW_BOUNDARY_UP_SWITCH</strong> - Assume no electric field or flows on upstream boundary</li>
+<li><strong>NO_FLOW_BOUNDARY_DIV_SWITCH</strong> - Assume no electric field or flows on downstream boundary</li>
+</ul>
+<div class="admonition note">
+<p class="first admonition-title">Note</p>
+<p class="last">Fixed and no-flow boundaries can be used together, as long as they refer to different ends of the system (for example, the upstream boundary can’t both be fixed and reflective).</p>
+</div>
+<p>As was noted in the Grids section, different boundary options change the total number of spatial points (cell centres and boundaries) in the system</p>
+<ul class="simple">
+<li>For periodic boundary conditions, the system starts with a cell centre and ends with a boundary, so <img class="math" src="_images/math/5ec1d5982b665abc363825d7160b06fc9bef09ff.png" alt="N_x = 2N_c"/></li>
+<li>Each fixed boundary condition adds an extra cell centre to the specified <img class="math" src="_images/math/be212f4bd9d05ef8cd8949a5610bc3ca04e750f7.png" alt="N_c"/></li>
+<li>For non-periodic boundaries, <img class="math" src="_images/math/de160548fd3defee368d3e3affc93f25b7ad73f4.png" alt="N_x = 2N_c' - 1"/>,  where <img class="math" src="_images/math/bdda3cb0d9c00171d8d9b53b9381337e0c5029b8.png" alt="N_c'"/> contains the extra (ghost) cells from any fixed boundaries</li>
+</ul>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Boundary conditions must be specified, and in case on non-periodic boundaries, each boundary must be specified.</p>
+</div>
+<p>Additional boundary condition operators and switches exist when a divertor target (material surface) boundary condition is needed. These require first setting <strong>NO_FLOW_BOUNDARY_DIV_SWITCH</strong> to true.</p>
+<p>An effective plasma sink can be turned on using <strong>PLASMA_SINK_SWITCH</strong>. Neutral recycling (surface recombination) can be turned on with <strong>RECYCLING_SWITCH</strong>. This returns a fraction of ions lost to the boundary as ground state neutrals. The fraction is specified by <strong>REC_R</strong> in <em>NEUT_AND_HEAT_INPUT.txt</em>.</p>
+<p>If fluid ions are not enabled, the plasma is assumed to be flowing out of the system at the Bohm speed. If fluid ions are enabled, the ion flux is calculated using extrapolation, unless <strong>NO_EXTRAPOLATION_SWITCH</strong> is on, in which case it is again the Bohm flux. This can be overwritten by setting <strong>SONIC_OUTFLOW_DIV_SWITCH</strong> to true, which makes sure the Bohm criterion is satisfied. It is possible to change the Mach number at the divertor target by changing <strong>MACH_N_DIV</strong> in <em>NEUT_AND_HEAT_INPUT.txt</em>.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">Not setting <strong>SONIC_OUTFLOW_DIV_SWITCH</strong> to true in the current version of SOL-KiT can result in non-physical behaviour due to the numerical properties of extrapolation.</p>
+</div>
+</div>
+<div class="section" id="initialization-options">
+<h2>Initialization options<a class="headerlink" href="#initialization-options" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT has multiple initialization options, ranging from complete in-code initialization to initialization via input files.</p>
+<p>The calculated initializations of plasma properties can be either periodic or monotonic, and the <strong>_INIT</strong> switches are all in the <em>SWITCHES_INPUT.txt</em> file.</p>
+<p>Periodic initialization is automatically used if the grid is periodic, and the parameters governing the initialization are in <em>F_INIT_INPUT.txt</em></p>
+<ul class="simple">
+<li><strong>T_AVG</strong> - Average temperature, <img class="math" src="_images/math/39c0783c011cbc69be73b549d846630866528c04.png" alt="T_{avg}"/></li>
+<li><strong>T_AMP</strong> - Temperature perturbation amplitude, <img class="math" src="_images/math/1b1fbf3bbdcdd476d864b4c3daaed4ad99dec558.png" alt="T_{amp}"/></li>
+<li><strong>T_PHASE</strong> - Temperature perturbation phase, <img class="math" src="_images/math/3b0ad001e579d7cd0a00952d3d46eef0ff226cfd.png" alt="\varphi_T"/></li>
+<li><strong>T_FREQ</strong> - Temperature perturbation frequency/wave number, <img class="math" src="_images/math/0960c938f737187776ff2a72172ea59d08973c27.png" alt="k_T"/></li>
+<li><strong>DENS_AVG</strong> - Average density, <img class="math" src="_images/math/733a795ce022fc166d549da98d61f1de93b162d7.png" alt="n_{avg}"/></li>
+<li><strong>DENS_AMP</strong> - Density perturbation amplitude, <img class="math" src="_images/math/e2e594b9d97b8684e09741cba6c6bb6aaef8946c.png" alt="n_{amp}"/></li>
+<li><strong>DENS_PHASE</strong> - Density perturbation phase, <img class="math" src="_images/math/3b0ad001e579d7cd0a00952d3d46eef0ff226cfd.png" alt="\varphi_T"/></li>
+<li><strong>DENS_FREQ</strong> - Density perturbation frequency/wave number, <img class="math" src="_images/math/e8082d4f9b7dfa49370bbf2cebb770d246c66f7d.png" alt="k_n"/></li>
+</ul>
+<p>When utilized, this will initialize the electrons as Maxwellian, with temperature and density</p>
+<div class="math">
+<p><img src="_images/math/d07093e15180c1e310930a3b384e9509b287f864.png" alt="T(x) = T_{avg} + T_{amp} \sin(2 \pi k_T \frac{x}{x_{N_x}} + \varphi_T),"/></p>
+</div><div class="math">
+<p><img src="_images/math/fed0bb6ce5bb2326434e318f3fd29b5d44dd6fe0.png" alt="n(x) = n_{avg} + n_{amp} \sin(2 \pi k_n \frac{x}{x_{N_x}} + \varphi_n)."/></p>
+</div><p>There will be no initial electric field or flow when initializing with periodic boundaries.</p>
+<p>The monotonic initialization options for the electrons are</p>
+<ul class="simple">
+<li><strong>LINEAR_INIT</strong> - Initialize temperature and density as linear</li>
+<li><strong>DROP_INIT</strong> - Initialize temperature and density with a sharp drop/jump, or as an exponential ramp</li>
+<li><strong>TWO_POINT_M_INIT</strong> - Initialize temperature and density from Two-Point model</li>
+</ul>
+<p>The boundary values for monotonic initialization are in <em>F_INIT_INPUT.txt</em></p>
+<ul class="simple">
+<li><strong>T_UP</strong> - Upstream temperature, <img class="math" src="_images/math/5c76bdcbe1a394bbd39c4eac7925aba432b95947.png" alt="T_u"/></li>
+<li><strong>T_DIV</strong> - Divertor/downstream temperature, <img class="math" src="_images/math/04fe684cb42c1942f10e755ca67dc03b8175f5d0.png" alt="T_d"/></li>
+<li><strong>DENS_UP</strong> - Upstream density, <img class="math" src="_images/math/8906cb7e78b94f1724f0919eb3bac60a8d3c9b8a.png" alt="n_u"/></li>
+<li><strong>DENS_DIV</strong> - Divertor/downstream density, <img class="math" src="_images/math/7f022743140b3c69e2a3bb796a82bb989ff558af.png" alt="n_d"/></li>
+</ul>
+<p>With these, linear initialization gives</p>
+<div class="math">
+<p><img src="_images/math/9be9578b7c9d1e37293d42348ede30241b958a53.png" alt="T(x) = T_{u} - \left(T_{u} - T_d\right) \frac{x}{x_{N_x}},"/></p>
+</div><div class="math">
+<p><img src="_images/math/6d4c33ca2dba18b2230e0e5aaafca4ee6651d6dc.png" alt="n(x) = n_{u} - \left(n_{u} - n_d\right) \frac{x}{x_{N_x}},"/></p>
+</div><p>and the Two-Point model</p>
+<div class="math">
+<p><img src="_images/math/33c6dfe7a6f57565225423824030fba70202ef87.png" alt="T(x) = \left(T_u ^{7/2} + \frac{x}{x_{N_x}} \left(T_d ^{7/2} - T_u ^{7/2}\right)\right) ^{2/7},"/></p>
+</div><div class="math">
+<p><img src="_images/math/1d8edc864ad4df5c0efc5d8e78bc32f332f3fc60.png" alt="n(x) = n_u  \frac{T_u}{T(x)}."/></p>
+</div><p>Initializing with a drop/jump/ramp has additional options</p>
+<ul class="simple">
+<li><strong>NUM_DROP</strong> - Spatial point at which drop/jump happens, <img class="math" src="_images/math/c33ef993fc2cabca9824ea8d3eb26bc5b2959171.png" alt="N_{drop}"/></li>
+<li><strong>PLASMA_RAMP_WIDTH</strong> - Width of plasma exponential ramp in cells, <img class="math" src="_images/math/e967b20397f1ddb166f151fe5cc9f300911ec7f1.png" alt="N_{ramp}"/></li>
+</ul>
+<p>If <img class="math" src="_images/math/e9e7663c14b45d81ef660081d4f151ca33f4c88b.png" alt="N_{ramp} = 0"/>, a sharp drop/jump is made from <img class="math" src="_images/math/5c76bdcbe1a394bbd39c4eac7925aba432b95947.png" alt="T_u"/>, <img class="math" src="_images/math/8906cb7e78b94f1724f0919eb3bac60a8d3c9b8a.png" alt="n_u"/> to <img class="math" src="_images/math/04fe684cb42c1942f10e755ca67dc03b8175f5d0.png" alt="T_d"/>, <img class="math" src="_images/math/7f022743140b3c69e2a3bb796a82bb989ff558af.png" alt="n_d"/> at spatial point <img class="math" src="_images/math/018df26084c0d1ee89bc95615a402251ea8b9520.png" alt="x_{N_{drop}}"/>.</p>
+<p>If <img class="math" src="_images/math/6b39cef37f8f458a2275ed7b20709d85d672d638.png" alt="N_{ramp} &gt; 0"/> temperature and density are set to <img class="math" src="_images/math/5c76bdcbe1a394bbd39c4eac7925aba432b95947.png" alt="T_u"/>, <img class="math" src="_images/math/8906cb7e78b94f1724f0919eb3bac60a8d3c9b8a.png" alt="n_u"/> below <img class="math" src="_images/math/018df26084c0d1ee89bc95615a402251ea8b9520.png" alt="x_{N_{drop}}"/>. Between <img class="math" src="_images/math/018df26084c0d1ee89bc95615a402251ea8b9520.png" alt="x_{N_{drop}}"/> and <img class="math" src="_images/math/f8c7613db8db0a259dcd35bbae352dfe8d50f75d.png" alt="x_{N_{drop}+2N_{ramp}}"/> we have</p>
+<div class="math">
+<p><img src="_images/math/e8f457b1b5f3409237b374287dba97c1b389bd3d.png" alt="T(x_k) = T_u e^{-\frac{k-N_{drop}}{2N_{ramp}}} \ln{\frac{T_u}{T_d}},"/></p>
+</div><div class="math">
+<p><img src="_images/math/b7b29265313a47eb64dce1ebd921fbb3245d40be.png" alt="n(x_k) = n_u e^{-\frac{k-N_{drop}}{2N_{ramp}}} \ln{\frac{n_u}{n_d}}."/></p>
+</div><p>After <img class="math" src="_images/math/f8c7613db8db0a259dcd35bbae352dfe8d50f75d.png" alt="x_{N_{drop}+2N_{ramp}}"/>, temperature and density are set to <img class="math" src="_images/math/04fe684cb42c1942f10e755ca67dc03b8175f5d0.png" alt="T_d"/>, <img class="math" src="_images/math/7f022743140b3c69e2a3bb796a82bb989ff558af.png" alt="n_d"/>.</p>
+<p>In all above initialization options, all <img class="math" src="_images/math/2b03f10859ffeeee9ece9f213287e3b54f5f39b8.png" alt="l&gt;0"/> harmonics are initialized to 0, and there are no flows.</p>
+<p>If fluid ions are turned on and their velocity is loaded in from <em>ION_VEL_INPUT.txt</em>, if electrons are treated as kinetic, the electron <img class="math" src="_images/math/9f3bae0c1c5490c0a05f109b4cd065c8894870eb.png" alt="l=1"/> harmonic is initialized as</p>
+<div class="math">
+<p><img src="_images/math/f2189eb15b80c70b702ae451aea9e01f3470d4cb.png" alt="f_1(v) = - u_i \frac{\partial f_0}{\partial v},"/></p>
+</div><p>giving the same flow speed <img class="math" src="_images/math/21d924acd9c2a69519517fb0584c1d74dade3023.png" alt="u_i"/> to electrons. <img class="math" src="_images/math/5ba01ac06a0cee0625408eddf282b86d5df62483.png" alt="u_e=u_i"/> is simply set in the case of fluid electrons.</p>
+<p>The electric field and electron <img class="math" src="_images/math/9f3bae0c1c5490c0a05f109b4cd065c8894870eb.png" alt="l=1"/> harmonic can be initialized with local values by using a modified equation for <img class="math" src="_images/math/09968cb620b9b121ddcc33bb90eab038355375ab.png" alt="f_1"/></p>
+<div class="math">
+<p><img src="_images/math/560ec49043ca241691be5dfcbc38107013ddfdb3.png" alt="v  \frac{\partial f_0}{\partial x} - E  \frac{\partial f_0}{\partial v} = - A n_e f_1,"/></p>
+</div><p>where <img class="math" src="_images/math/0043fe6507e9b1d112e07a2801e24927e267dd50.png" alt="A"/> and <img class="math" src="_images/math/4b6222b865b812d2a59368cd1629eed6b54454d5.png" alt="E"/> are chosen so that the heat flux is the Spitzer-Harm heat flux with zero flow speed.</p>
+<p>Finally, it is possible to ignore neutral density initialization and initialize the plasma in a Saha-Boltzmann equialibrium. This is done using <strong>LOCAL_SAHA_BOLTZMANN_INIT_SWITCH</strong>. This will work with any initialization for the plasma, either automatic or from files. The initial plasma density value is reinterpreted as the total density, <img class="math" src="_images/math/70b1bb405ec9c41adff7a237976ff2be015d4bf8.png" alt="n_{TOT}"/>, of both plasma and neutrals. In each cell, the local plasma temperature is then used to calculate the plasma density using the Saha equation for hydrogen</p>
+<div class="math">
+<p><img src="_images/math/2971409940808f6e0ca5411986c2a34b8a9f5689.png" alt="\frac{n_e^2}{n_{TOT} - n_e} = \left(\frac{2 \pi m_e kT}{h^2}\right)^{3/2} \frac{1}{\sum_i i^2 e^{I_i}{kT}}"/></p>
+</div><p>where <img class="math" src="_images/math/2c3a512fd065bfed82d9ec72f9c4746eb3e7753f.png" alt="I_i"/> is the ionization potential for state <img class="math" src="_images/math/df0deb143e5ac127f00bd248ee8001ecae572adc.png" alt="i"/>, and where quasineutrality is assumed. The excited state densities are calculated assuming a Boltzmann distribution of excited states.</p>
+<p>Initialization is also possible from files by using the following switches and populating the corresponding files with arrays of correct length (<img class="math" src="_images/math/66f3707778ef19942b4bb02f18176926e7df7c96.png" alt="N_x"/> for given boundary setup)</p>
+<ul class="simple">
+<li><strong>DENSITY_FROM_FILE_INIT</strong> - Load electron/ion density from file - <em>DENS_INPUT.txt</em></li>
+<li><strong>TEMPERATURE_FROM_FILE_INIT</strong> - Load electron temperature from file - <em>TEMPERATURE_INPUT.txt</em></li>
+<li><strong>NEUTRAL_GROUND_DENS_FROM_FILE_INIT</strong> - Load neutral ground state density from file - <em>NEUTRAL_DENS_INPUT.txt</em></li>
+<li><strong>ION_VEL_FROM_FILE_INIT</strong> - Load ion velocity from file - <em>ION_VEL_INPUT.txt</em></li>
+<li><strong>Z_PROFILE_FROM_FILE</strong> - Load ionization profile from file</li>
+</ul>
+</div>
+<div class="section" id="restart-options">
+<h2>Restart options<a class="headerlink" href="#restart-options" title="Permalink to this headline">¶</a></h2>
+<p>If  <strong>SAVE_RESTART_SWITCH</strong> is true, a file will be kept after each timestep containing the current state of the system. A separate file will contain the current timestep and real elapsed time, as well as other simulation data. These files are saved in SOL-KiT/INPUT/RESTART/ for easier access.</p>
+<p>If <strong>RESTART_SWITCH</strong> is true, instead of initializing using initialization instructions as explained above, the code will attempt yo load initial conditions from the RESTART folder. Additionally, it will load and start from the current time and timestep number if <strong>CONTINUE_RUN_SWITCH</strong> is true.</p>
+<div class="admonition warning">
+<p class="first admonition-title">Warning</p>
+<p class="last">The code does not check if compatible input is chosen for the restarted run. As such it is up to the user to make sure the continued run is using the desired input (e.g. normalization, switches, grids, etc.).</p>
+</div>
+<p>If the user wishes to restart a run but allow for the modification of the number of harmonics and number of neutral states, this can be achieved using <strong>ADAPTIVE_RESTART_SWITCH</strong> (it is not possible to reduce the numbers of states or harmonics, only to increase them).  This way, the vector saved in the restart folder will be loaded in, but its elements will be distributed into the new initial vector which may have more neutral states or harmonics.</p>
+</div>
+<div class="section" id="solver-options">
+<h2>Solver options<a class="headerlink" href="#solver-options" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT uses the BiConjugate Gradient iterative sparse matrix solver from the PETSc library, with default block Jacobi preconditioning. PETSc solver options that can be changed through input are in the <em>SOLVER_PARAMS_INPUT.txt</em> file, and are</p>
+<ul class="simple">
+<li><strong>SOLVER_TOL</strong> - Solver relative tolerance</li>
+<li><strong>SOLVER_MAX_ITER</strong> - Solver maximum number of iteration</li>
+</ul>
+<p>Other options in this file include the nonlinear iteration options and the divertor boundary condition cutoff tolerance</p>
+<ul class="simple">
+<li><strong>MAX_NONLIN</strong> - Maximum number of nonlinear iterations</li>
+<li><strong>NONLIN_TOL</strong> - Nonlinear iteration tolerance</li>
+<li><strong>BIS_TOL</strong> - Iteration tolerance for electron flux calculation at the divertor boundary</li>
+</ul>
+</div>
+<div class="section" id="output-options-and-handling">
+<h2>Output options and handling<a class="headerlink" href="#output-options-and-handling" title="Permalink to this headline">¶</a></h2>
+<p>SOL-KiT produces a variety of outputs, the main one being the electron distribution harmonics. Each output file is contained in its designated folder, and contains the timestep it belongs to. For the harmonics in output folder DIST_F, the filename will also contain the harmonic number. All output folders are in the OUTPUT folder in the parent directory.</p>
+<p>All output files are in plain text format currently, and are either a single or multi-column space separated arrays. The harmonic output files are organized so that the columns correspond to different <img class="math" src="_images/math/a59f68a4202623bb859a7093f0316bf466e6f75d.png" alt="x"/>-positions, going from upstream to downstream. Rows correspond to the velocity cells, starting from lowest velocity cell.</p>
+<p>The following are vector output switches, with brief output explanations and their associated folders</p>
+<ul class="simple">
+<li><strong>OUTPUT_DENSITY</strong> - Output electron/ion density (DENSITY, ION_DENS)</li>
+<li><strong>OUTPUT_TEMP</strong> - Output electron temperature (TEMPERATURE)</li>
+<li><strong>OUTPUT_FLOW_VEL</strong> - Output electron/ion flow velocity (FLOW_VEL_X, ION_VEL)</li>
+<li><strong>OUTPUT_HEAT_FLOW</strong> - Output electron conduction and total heat flux (HEAT_FLOW_X,HEAT_FLOW_X_TOT)</li>
+<li><strong>OUTPUT_E_FIELD</strong> - Output electric field (E_FIELD_X)</li>
+<li><strong>OUTPUT_SH_TEST</strong> - Output ratio of calculated heat flux to Spitzer-Harm heat flux (SH_q_ratio)</li>
+<li><strong>OUTPUT_RATE_DATA</strong> - Output calculated ionization rates, as well as Maxwellian rates for same density and temperature (S_ION_SK, S_ION_M). Also outputs power density (normalized to <img class="math" src="_images/math/917b5e9caa081736440ff428137d5263507e403f.png" alt="n_0 T_0[J]/t_0"/>) of individual processes (see files tests.f90 and post_processing.f90 for more details):<ul>
+<li>ION_E_RATE - power lost in ionization</li>
+<li>EX_E_RATE - power lost in excitation</li>
+<li>RAD_DEEX_E_RATE - power lost in radiative deexcitation</li>
+<li>RAD_DEC_E_RATE - power lost in radiative recombination</li>
+<li>DEEX_E_RATE - power gained through deexcitation collisions</li>
+<li>REC_3B_E_RATE - power gained through three-body recombination</li>
+<li>NUM_DV_HEATING - numerically calculated Joule heating power</li>
+</ul>
+</li>
+<li><strong>OUTPUT_ATOMIC_EN_TEST_SWITCH</strong> - Output total energy contained in atomic states and thermal motion (ATOMIC_EN_TEST)</li>
+<li><strong>OUTPUT_QN_TEST</strong> - Output <img class="math" src="_images/math/cd60f8106041ab9f9edb1fc06e9cdd43efabf90c.png" alt="n_e-n_i"/> (QN_TEST)</li>
+<li><strong>OUTPUT_CURRENT_TEST</strong> - Output <img class="math" src="_images/math/299e04b9e5458b7ed17901d40d0313567bfa3047.png" alt="j_e-j_i"/> (CURRENT_TEST)</li>
+</ul>
+<p>Neutral states can be outputted using the <strong>OUTPUT_NEUTRAL_DATA</strong> switch, and the output will be a multi-column array, with columns corresponding to the neutral state (from ground to highest), and with rows now being the spatial position, starting from upstream.</p>
+<p>Other output folders are</p>
+<ul class="simple">
+<li>GRIDS - contains vectors with grid data (spatial positions, velocity cell centre positions, and velocity cell widths)</li>
+<li>SHEATH_DATA - contains files with five entries, the first being the sheath heat transmission coefficient, the second the sheath potential drop normalized to boundary temperature, the third the normalized cut-off velocity, the fourth is the ratio of the extrapolated and used (limited) ion fluxes, while the fifth is 1 if the Bohm value was used, and 0 if extrapolation was used  (this file is outputted only when the plasma sink switch is on)</li>
+<li>TIMESTEP_DATA - if <strong>ADAPTIVE_TIMESTEP_SWITCH</strong> is true, files here will contain the current timestep size (in normalized units), and the elapsed total time in seconds</li>
+<li>TOT_DENS_DATA - if neutrals are tracked, files here will contain the total line-averaged density, the neutral line averaged density, the relative change of the total line-averaged density in the current timestep, and the the relative change of the neutral line-averaged density in the current timestep</li>
+</ul>
+<p>SOL-KiT also produces a <em>STATUS.txt</em> file, which is written either when a run is finished normally, or when the solver diverges. If the solver diverges, this file will contain the timestep when the solver diverged, as well as the PETSc KSP divergance flag. A shell script is provided in the OUTPUT folder that quickly clears all output.</p>
+<p class="rubric">Footnotes</p>
+<table class="docutils footnote" frame="void" id="f1" rules="none">
+<colgroup><col class="label" /><col /></colgroup>
+<tbody valign="top">
+<tr><td class="label"><a class="fn-backref" href="#id2">[1]</a></td><td>Currently not properly supported due to lack of cross-section data for elastic collisions</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+
+
+          </div>
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="index.html">SOL-KiT</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="about.html">License notice</a></li>
+<li class="toctree-l1"><a class="reference internal" href="about.html#about-sol-kit">About SOL-KiT</a></li>
+<li class="toctree-l1"><a class="reference internal" href="prerequisites.html">Prerequisites and Setup</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">User Guide</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="#input-file-structure">Input file structure</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#normalization">Normalization</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#grids">Grids</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#general-equations">General equations</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#collision-operators">Collision operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#other-operators">Other operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#configuring-the-physics-operators">Configuring the physics operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#boundary-options-and-operators">Boundary options and operators</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#initialization-options">Initialization options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#restart-options">Restart options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#solver-options">Solver options</a></li>
+<li class="toctree-l2"><a class="reference internal" href="#output-options-and-handling">Output options and handling</a></li>
+</ul>
+</li>
+</ul>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="index.html">Documentation overview</a><ul>
+      <li>Previous: <a href="prerequisites.html" title="previous chapter">Prerequisites and Setup</a></li>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3>Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Stefan Mijin.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.0.0+</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.7</a>
+      
+      |
+      <a href="_sources/user-guide.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

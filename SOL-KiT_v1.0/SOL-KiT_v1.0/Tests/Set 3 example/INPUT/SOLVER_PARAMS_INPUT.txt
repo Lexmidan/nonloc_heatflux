@@ -1,0 +1,11 @@
+ Solver parameters:
+                               SOLVER_TOL =        1.0e-20     Solver tolerance 
+                          SOLVER_MAX_ITER =          10000     Solver max number of iteration 
+
+ Nonlinear iteration parameters:
+                               MAX_NONLIN =           1000     Maximum number of nonlinear iteration 
+                               NONLIN_TOL =        1.0e-12     Nonlinear iteration tolerance 
+
+ Divertor cut-off parameters:
+                                  BIS_TOL =        1.0e-11     Tolerance for divertor boundary condition cutoff 
+

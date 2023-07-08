@@ -1,0 +1,5 @@
+                                    ION_Z =   1.000000         Plasma Z
+                                 ATOMIC_A =   1.000000         Atomic mass of main plasma particles
+                                TEMP_0_EV =   100.00000        Temperature normalization in eV
+                                DENSITY_0 =  0.1000000E+20     Density normalization
+                            ION_MASS_MULT =        1.00        Ion mass multiplier (default = 1)

@@ -1,0 +1,98 @@
+**************************************************************************************************
+**************************************************************************************************
+		     _____   _____   _                _   __  _   _____
+		    /  ___| |  _  | | |              | | / / (_) |_   _|
+		    \ `--.  | | | | | |      ______  | |/ /   _    | |
+		     `--. \ | | | | | |     |______| |    \  | |   | |
+		    /\__/ / \ \_/ / | |____          | |\  \ | |   | |
+		    \____/   \___/  \_____/          \_| \_/ |_|   \_/
+
+**************************************************************************************************
+Copyright 2020 Stefan Mijin
+
+SOL-KiT is free software: you can redistribute it and/or modify
+     it under the terms of the GNU General Public License as published by
+     the Free Software Foundation, either version 3 of the License, or
+     (at your option) any later version.
+
+     SOL-KiT is distributed in the hope that it will be useful,
+     but WITHOUT ANY WARRANTY; without even the implied warranty of
+     MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+     GNU General Public License for more details.
+
+     You should have received a copy of the GNU General Public License
+     along with SOL-KiT.  If not, see <https://www.gnu.org/licenses/>.
+
+**************************************************************************************************
+                                    	      README
+**************************************************************************************************
+**************************************************************************************************
+Author: Stefan Mijin
+Email: stefan.mijin14@imperial.ac.uk
+Date: 14.02.2020.
+**************************************************************************************************
+                                          Documentation
+**************************************************************************************************
+Sphinx html documentation can be found in the docs directory. It contains information on 
+prerequisites, compiling, and running SOL-KiT, as well as a short user guide explaining the basic
+inputs of the code. To open the first page of the documentation simply open index.html.
+**************************************************************************************************
+                                       Directory structure
+**************************************************************************************************
+Source files are contained in SOURCES. Documentation is in docs. The input used in SOL-KiT is in 
+the folder INPUT, while OUTPUT contains a large number of subfolders that are filled with
+individual output files in .txt format. Finally, the folder Tests contains a number of tests based
+on previously performed code benchmarking to verify that the code is running properly.
+**************************************************************************************************
+                                       List of source files
+**************************************************************************************************
+- main.F90: Contains main time loop and calls to all initializations
+- evolve.f90: Contains main time evolution routines and calls to matrix builder 
+- switches.f90: Contains all switches
+- variable_kind_data.f90: Contains variable kind data
+- mat_build.f90: Contains calls to submatrix builders and adds submatrices into main matrix
+- matrix_data.f90: Contains the matrix structure and sparsity patterns used to store and access 
+                   the local sparse matrix
+- normalization.f90: Contains all normalizations and Coulomb logarithm functions
+- input.f90: Contains all file reading routines
+- output.f90: Contains all output routines
+- inel_grid.f90: Contains all discretization properties used in the treatment of 
+                 inelastic collisions
+- grid.f90: Contains all grid quantities and function
+- neut_and_heat.f90: Contains neutral and heating parameters
+- sparse.f90: Contains definition of SPARSE_MAT type, along with sparse matrix operations and 
+              the identity matrix
+- f_init.f90: Contains all vector initialization
+- coll_cs_rates.f90: Contains all cross-section and rate data and routines
+- solver_params.f90: Contains all parameters used in matrix solver and nonlinear iterations
+- ext_solver.F90: Manages calling PETSc
+- moments.f90: Contains all moment calculation routines
+- post_processing.f90: Contains post-processing routine and output calls
+- printing.f90: Contains all printing subroutines
+- tests.f90: Contains post-processing test routines
+- build_0d.f90: Contains calls to build the collision integrals and the collisional-radiative 
+                model submatrices
+- build_coulomb_coll.f90: Contains all matrix builders and related routines for Coulomb 
+                          collision integrals
+- build_crm.f90: Contains all collisional-radiative submatrix builders
+- build_div_boundary.f90: Contains plasma sink and recycling submatrix building routines
+- build_e_adv.f90: Contains velocity space advection submatrix routines due to E_x field
+- build_fluid_el.f90: Contains submatrix building routines for fluid electron operators
+- build_heating.f90: Contains heating term submatrix builder
+- build_ion_fluid.f90: Contains submatrix building routines for fluid ion operators
+- build_maxwell.f90: Contains submatrix for Maxwell-Ampere's law and the subroutine 
+                     that fills it
+- build_vlasov.f90: Contains Vlasov (E field advection) submatrix builder
+- build_x_adv.f90: Contains the spatial advection submatrix and the routine 
+                   used to pre-build it
+- build_neutral_coll.f90: Contains all e-n collision integral matrix build routines
+- build_neutral_diff.f90: Contains build routine for neutral diffusion
+- build_particle_source.f90: Contains particle source builder
+**************************************************************************************************
+
+
+
+
+
+
+

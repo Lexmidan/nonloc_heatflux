@@ -80,9 +80,9 @@ def assemble(para, cache):
                                         ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
                                                                                 #size of the input vector
 
-        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+        dataset, qqratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
                                                                           ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
-        cache['ratio']=ratio
+        cache['qqratio']=qqratio.values
 
 
     '''    
@@ -132,7 +132,7 @@ def assemble(para, cache):
 
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
-    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
+    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'], cache['heatflux'] = alphas, betas, kappa, Kn, heatflux
     cache['coulog'] = coulog
     return cache
 
@@ -161,6 +161,7 @@ def initialize(para):
     alpha_init = para['alphas']
     beta_init = para['betas']
     heatflux_init= para['heatflux']
+    qqratio_init = np.zeros(len(T))
 
     #Define empty matrices that will contain time evolution of the profiles
     TProfile = np.zeros((numberOfNode, numOfTimeStep + 1))
@@ -171,6 +172,7 @@ def initialize(para):
     Kn_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     ne_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     Kn_nonloc_prof= np.zeros((numberOfNode, numOfTimeStep + 1))
+    qqratio_prof = np.zeros((numberOfNode, numOfTimeStep + 1))
     F = np.zeros((numberOfNode, 1))
     Jacobian = np.zeros((numberOfNode, numberOfNode))
 
@@ -182,6 +184,7 @@ def initialize(para):
     Kn_prof[:,0] = Kn_init.reshape(1,-1)
     ne_prof[:,0] = ne_init.reshape(1,-1)
     Zbar_prof[:,0] = Zbar_init.reshape(1,-1)
+    qqratio_prof[:,0] = qqratio_init.reshape(1,-1)
     times=np.array([0])
 
     coulog_init=23-np.log(np.sqrt(ne_init)*Zbar_init/T_init**1.5)
@@ -191,7 +194,7 @@ def initialize(para):
     cache = {'T':T,'T0':T0,'TProfile':TProfile, 'alpha':alpha_init, 'beta':beta_init, 'heatflux':heatflux_init,
              'F':F,'Jacobian':Jacobian, 'time':0, 'times':times, 'dt':dt, 'kappa': kappa, 'Zbar':Zbar_init, 
              'ne':ne_init,'Kn':Kn_init, 'Kn_prof':Kn_prof,'ne_prof':ne_prof,'Zbar_prof':Zbar_prof,
-             'Kn_nonloc': Kn_nonloc,'Kn_nonloc_prof':Kn_nonloc_prof,'Log':pd.DataFrame(), 
+             'Kn_nonloc': Kn_nonloc,'Kn_nonloc_prof':Kn_nonloc_prof,'Log':pd.DataFrame(), 'qqratio': qqratio_init, 'qqratio_prof':qqratio_prof,
              'alpha_prof':alpha_prof, 'beta_prof':beta_prof, 'heatflux_prof':heatflux_prof, 'coulog':coulog_init}
     return cache
 
@@ -235,6 +238,8 @@ def storeUpdateResult(cache):
     Kn_prof = cache['Kn_prof']   
     ne_prof = cache['ne_prof']
     Kn_nonloc_prof = cache['Kn_nonloc_prof']
+    qqratio_prof = cache['qqratio_prof']
+
 
     alpha = cache['alpha']      #current profile
     beta = cache['beta']
@@ -243,6 +248,7 @@ def storeUpdateResult(cache):
     Kn = cache['Kn']
     ne = cache['ne']
     Kn_nonloc = cache['Kn_nonloc']
+    qqratio=cache['qqratio']
     T = cache['T']
     cache['T0'] = T.copy()
 
@@ -254,6 +260,7 @@ def storeUpdateResult(cache):
     Kn_prof[:,timeStep] = Kn.reshape(1,-1)
     ne_prof[:,timeStep] = ne.reshape(1,-1)
     Kn_nonloc_prof[:,timeStep] = Kn_nonloc.reshape(1,-1)
+    qqratio_prof[:,timeStep] = qqratio.reshape(1,-1)
     return cache
 
 def newtonIteration(para, cache):

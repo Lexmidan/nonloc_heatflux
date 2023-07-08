@@ -1,0 +1,22 @@
+ Neutral parameters:
+                             NUM_NEUTRALS =             30     Number neutral states 
+                            NUM_CS_ANGLES =             72     Number of resolved angles in differential cross-section 
+                          NEUTRAL_DENSITY =            0.1     Reference neutral density 
+                             NEUTRAL_TEMP =           0.01     Neutral temperature 
+                                 SIGMA_EL =            1.0     Electron-neutral elastic cross-section (units of SIGMA_0) 
+
+ Heating parameters:
+                                N_HEATING =              6     Number of heated upstream cell centres 
+                                T_HEATING =            100     Last heating timestep 
+                               HEAT_POWER =            5.0     Heating power (in MW/m^2) 
+
+ Recycling parameters:
+                               MACH_N_DIV =            1.0     Divertor target Mach number 
+                                    REC_R =            1.0     Recycling rate 
+
+ Particle source parameters:
+                            N_PART_SOURCE =              6     Number of source cell centres 
+                            T_PART_SOURCE =            100     Last source timestep 
+                                P_FLUX_IN =            1.0     Effective input flux 
+                         TEMP_PART_SOURCE =            1.0     Source temperature if not using background temperature 
+

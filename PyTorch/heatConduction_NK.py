@@ -12,6 +12,72 @@ import torch
 from matplotlib import pyplot as plt
 import scipy
 
+
+def F_Newton_Krylov(T, para, cache):
+        # BC informations
+    typeX0 = para['x=0 type']
+    valueX0 = para['x=0 value']
+    typeXL = para['x=L type']
+    valueXL = para['x=L value']
+    ne = cache['ne']
+    Z = cache['Zbar']
+    Kn = cache['Kn']
+    Kb = para['boltzman']
+    x = para['x']
+    dx = para['deltaX']
+    dt = cache['dt']  
+    T0 = cache['T0'] 
+
+    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
+    ##Coulomb logarithm 
+    coulog = np.ones(len(para['x']))  #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
+    ##Thermal velocity (profile)
+    v=np.sqrt(T*Kb/para['m_e'])
+    ##Lambda mean free path
+    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
+    gradT=np.gradient(T,x)
+    ##Knudsen number accordint (5)
+    Kn = -lamb*gradT/T
+    kappa = para['conductivity'].values*1.31e10/coulog[:]*para['tau']**(cache['beta']-5/2)
+    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
+    
+    """
+    Parameters given by NN:
+    """    
+    
+    if para['NNmodel']==None:
+        alphas = para['alphas']
+        betas = para['betas']
+        heatflux = para['heatflux']
+    else:
+        scale=para['scaling']
+        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
+                                                                                #size of the input vector
+
+        # Useless for now
+        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
+        cache['ratio']=ratio
+
+
+    if typeX0 == 'heatFlux':
+                Ug1 = utility.fixedGradient(valueX0, kappa[0], dx, T[0], alphas[0], betas[0]) #boundary values
+    elif typeX0 == 'fixedTemperature':
+                Ug1 = utility.fixedValue(valueX0, T[1])
+    if typeXL == 'heatFlux':
+                Ug2 = utility.fixedGradient(valueXL, kappa[-1], dx, T[-1], alphas[-1], betas[-1])  #boundary values
+    elif typeXL == 'fixedTemperature':
+                Ug2 = utility.fixedValue(valueXL, T[-2])
+
+    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
+
+    F=(3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2
+    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
+    cache['coulog'] = coulog
+    return F
+
+
 def initialize(para):
     """ Initialize key data
     
@@ -156,9 +222,9 @@ def newtonIteration(para, cache):
     cache['times'] = np.append(cache['times'],cache['time'])
 
 
-    
-    F_onevar= lambda T: F_Newton_Krylov(T, para=para, cache=cache)#c: f(1,2,c)
-    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T0'] )
+    #Creates an anonymous function of only one variable (as scipy requests)
+    F_onevar= lambda T: F_Newton_Krylov(T, para=para, cache=cache)#lambda c: f(1,2,c)
+    cache['T'] = scipy.optimize.newton_krylov(F_onevar, np.ones(len(cache['T0'])) )
 
     log = cache['Log']
     ts = cache['ts']
@@ -388,66 +454,3 @@ def alpha_cor(alpha, Kn, s=2700, p=1):
 
     return alpha_cor
 
-def F_Newton_Krylov(T, para, cache):
-        # BC informations
-    typeX0 = para['x=0 type']
-    valueX0 = para['x=0 value']
-    typeXL = para['x=L type']
-    valueXL = para['x=L value']
-    ne = cache['ne']
-    Z = cache['Zbar']
-    Kn = cache['Kn']
-    Kb = para['boltzman']
-    x = para['x']
-    dx = para['deltaX']
-    dt = cache['dt']  
-    T0 = cache['T0'] 
-
-    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
-    ##Coulomb logarithm 
-    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
-    ##Thermal velocity (profile)
-    v=np.sqrt(T*Kb/para['m_e'])
-    ##Lambda mean free path
-    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
-    gradT=np.gradient(T,x)
-    ##Knudsen number accordint (5)
-    Kn = -lamb*gradT/T
-    kappa = para['conductivity'].values*1.31e10/coulog[:]*para['tau']**(cache['beta']-5/2)
-    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    
-    """
-    Parameters given by NN:
-    """    
-    
-    if para['NNmodel']==None:
-        alphas = para['alphas']
-        betas = para['betas']
-        heatflux = para['heatflux']
-    else:
-        scale=para['scaling']
-        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
-                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
-                                                                                #size of the input vector
-
-        # Useless for now
-        dataset, ratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
-                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
-        cache['ratio']=ratio
-
-
-    if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, kappa[0], dx, T[0], alphas[0], betas[0]) #boundary values
-    elif typeX0 == 'fixedTemperature':
-                Ug1 = utility.fixedValue(valueX0, T[1])
-    if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, kappa[-1], dx, T[-1], alphas[-1], betas[-1])  #boundary values
-    elif typeXL == 'fixedTemperature':
-                Ug2 = utility.fixedValue(valueXL, T[-2])
-
-    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
-
-    F=(3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2
-    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
-    cache['coulog'] = coulog
-    return F
