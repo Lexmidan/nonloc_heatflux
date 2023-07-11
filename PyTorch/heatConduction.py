@@ -421,9 +421,13 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
 
     Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = lng, sigma = 6), mode='same') #length of the kernel = lng, sigma = 6, 
     heatflux = (model.forward(torch.tensor(Qdata).float())[:,0] * model.scaling['Q']['std'] + model.scaling['Q']['mean']).detach().numpy()
+    #heatflux = scipy.ndimage.gaussian_filter(heatflux, sigma=2)
+    heatflux = scipy.signal.savgol_filter(heatflux, 11, 2)
     beta = (model.forward(torch.tensor(Qdata).float())[:,1] * model.scaling['beta']['std'] + model.scaling['beta']['mean']).detach().numpy()
+    #beta = scipy.ndimage.gaussian_filter(beta, sigma=2)
+    beta = scipy.signal.savgol_filter(beta, 11, 2)
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-
+    beta[beta>5] = 4
     #####OLD INTERFACE using AlphaBetaModel
 
     #alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
@@ -484,7 +488,6 @@ def qqRatio(qNN, kappa, x, T, gradT, Z, n, KnUnscaled, lng):
     return df, Ratio
 
 
-
 def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     '''
     Calculates local heatflux, then by comparing the latter with heatflux given by NN calculates alpha, after which 
@@ -502,13 +505,16 @@ def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     kQSH = 6.1e+02 * 1e3**2.5 * 1e3 # scaling constant consistent with SCHICK and T in keV
     local_heatflux_beta_model = - kQSH / Z[:] * ((Z[:] + 0.24) / (Z[:] + 4.2))\
       * TkeV[:]**beta * gradTkeV[:]
+    
+    local_heatflux_beta_model[local_heatflux_beta_model<1e-3]=qNN[local_heatflux_beta_model<1e-3]
 
     alpha = qNN/local_heatflux_beta_model
+    alpha[alpha>10]=10
+    alpha[alpha<1e-6]=1e-6
     alpha = alpha_cor(alpha, Kn)
     
+    #alpha[alpha>100]=1
     return alpha  
-
-
 #fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
@@ -537,4 +543,16 @@ def alpha_cor(alpha, Kn, s=2700, p=1):
     alpha_cor = 1+(s*(alpha[:]-1)*Kn[:]**(2*p))/(1+s*Kn[:]**(2*p))
 
     return alpha_cor
+
+def gaussian_kernel(size,sigma):
+    '''
+    Gauss kernel of given size
+
+    args: 
+        size - int.
+        sigma - int. Standard deviation in gaussian.
+    '''
+    filter_range = np.linspace(-int(size/2),int(size/2),size)
+    gaussian_filter = [1 / (sigma * np.sqrt(2*np.pi)) * np.exp(-x**2/(2*sigma**2)) for x in filter_range]
+    return gaussian_filter
 
