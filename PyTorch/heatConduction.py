@@ -37,10 +37,7 @@ def assemble(para, cache):
     typeXL = para['x=L type']
     valueXL = para['x=L value']
     ne = cache['ne']
-    Z = cache['Zbar']
-    Kn = cache['Kn']
     Kb = para['boltzman']
-    x = para['x']
     dx = para['deltaX']
 
     numberOfNode = para['numberOfNode']
@@ -50,40 +47,7 @@ def assemble(para, cache):
     dt = cache['dt']  
 
 
-    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
-        ##Coulomb logarithm 
-    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
-    
-        ##Thermal velocity (profile)
-    v=np.sqrt(T*Kb/para['m_e'])
-        ##Lambda mean free path
-    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
-    gradT=np.gradient(T,x)
-    ##Knudsen number accordint (5)
-    Kn = -lamb*gradT/T
-    kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
-    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    
-    #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
-
-    """
-    Parameters given by NN:
-    """    
-    
-    if para['NNmodel']==None:
-        alphas = para['alphas']
-        betas = para['betas']
-        heatflux = para['heatflux']
-    else:
-        scale=para['scaling']
-        alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
-                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
-                                                                                #size of the input vector
-
-        dataset, qqratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
-                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
-        cache['qqratio']=qqratio.values
-
+    alphas, betas, heatflux, kappa = cache['alpha'], cache['beta'], cache['heatflux'], cache['kappa']
 
     '''    
     Loop over grid
@@ -132,8 +96,6 @@ def assemble(para, cache):
 
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
-    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'], cache['heatflux'] = alphas, betas, kappa, Kn, heatflux
-    cache['coulog'] = coulog
     return cache
 
 
@@ -287,6 +249,48 @@ def newtonIteration(para, cache):
     cache['times'] = np.append(cache['times'],cache['time'])
     log = cache['Log']
     ts = cache['ts']
+
+
+############################################################
+
+    """
+    Parameters given by NN:
+    """    
+
+    ne = cache['ne']
+    Z = cache['Zbar']
+    Kn = cache['Kn']
+    Kb = para['boltzman']
+    x = para['x']
+
+    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
+    
+        ##Thermal velocity (profile)
+    v=np.sqrt(T*Kb/para['m_e'])
+        ##Lambda mean free path
+    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
+    gradT=np.gradient(T,x)
+    ##Knudsen number accordint (5)
+    Kn = -lamb*gradT/T
+    cache['kappa'] = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
+    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']  
+    
+    if para['NNmodel']==None:
+        alphas = para['alphas']
+        betas = para['betas']
+        heatflux = para['heatflux']
+    else:
+        scale=para['scaling']
+        cache['alpha'], cache['beta'], cache['heatflux'], cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
+                                                                                #size of the input vector
+
+        dataset, qqratio =qqRatio(cache['heatflux'] ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
+        cache['qqratio']=qqratio.values
+###############################################################
+
+
 
     if para['Break_condition']=='max_iter':
         for n in range(maxIteration):
@@ -502,10 +506,14 @@ def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     kQSH = 6.1e+02 * 1e3**2.5 * 1e3 # scaling constant consistent with SCHICK and T in keV
     local_heatflux_beta_model = - kQSH / Z[:] * ((Z[:] + 0.24) / (Z[:] + 4.2))\
       * TkeV[:]**beta * gradTkeV[:]
+    local_heatflux_beta_model[local_heatflux_beta_model<1e-3]=qNN[local_heatflux_beta_model<1e-3]
 
     alpha = qNN/local_heatflux_beta_model
+    alpha[alpha>10]=10
+    alpha[alpha<1e-6]=1e-6
     alpha = alpha_cor(alpha, Kn)
     
+    #alpha[alpha>100]=1
     return alpha  
 
 
