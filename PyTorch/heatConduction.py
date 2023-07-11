@@ -64,6 +64,7 @@ def assemble(para, cache):
     Kn = -lamb*gradT/T
     kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
     cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
+    kQSH = 6.1e+02
     
     #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
 
@@ -74,7 +75,7 @@ def assemble(para, cache):
     if para['NNmodel']==None:
         alphas = para['alphas']
         betas = para['betas']
-        heatflux = para['heatflux']
+        heatflux = -(kQSH/Z)*((Z+0.24)/(Z+4.2))*T**2.5*gradT
     else:
         scale=para['scaling']
         alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
@@ -129,8 +130,20 @@ def assemble(para, cache):
 
     # Calculate F (right hand side vector)
     d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
-    F = (3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
 
+
+
+
+    me = 9.1094e-28 # [g]
+    eV2K = 1.1604e4 # K = eV2K * eV
+    erg2J = 1e-7
+    Qfs =  v * Kb*ne*T
+    Qeff = 0.17 * Qfs * (1.0 - np.exp(-heatflux/(0.17*Qfs)))
+
+
+
+
+    F = (3/2*ne)*(T - T0)*Kb/dt  + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian
     cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'], cache['heatflux'] = alphas, betas, kappa, Kn, heatflux
@@ -155,6 +168,9 @@ def assemble_limiter(para, cache):
     Return: dictionary containing cache data
     """
 
+
+
+    
 
     # BC informations
     typeX0 = para['x=0 type']
@@ -213,7 +229,7 @@ def assemble_limiter(para, cache):
         if i == 0:
             if typeX0 == 'heatFlux':
                 Ug1 = utility.fixedGradient(valueX0, kappa[i], dx, T[0], alphas[i], betas[i]) #boundary values
-                Jacobian[0][1] = (1/dx**2)*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
+                Jacobian[0][1] = (1/dx)*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
                                            -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
             elif typeX0 == 'fixedTemperature':
                 Ug1 = utility.fixedValue(valueX0, T[1])
@@ -224,7 +240,7 @@ def assemble_limiter(para, cache):
         elif i == numberOfNode-1:
             if typeXL == 'heatFlux':
                 Ug2 = utility.fixedGradient(valueXL, kappa[i], dx, T[-1], alphas[i], betas[i])  #boundary values
-                Jacobian[-1][-2] = (1/dx**2)*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
+                Jacobian[-1][-2] = (1/dx)*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
                                            -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
             elif typeXL == 'fixedTemperature':
                 Ug2 = utility.fixedValue(valueXL, T[-2])

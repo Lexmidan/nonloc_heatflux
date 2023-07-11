@@ -94,8 +94,9 @@ def F_Newton_Krylov_SH(T, para, cache, scalator):
     dt = cache['dt']  
     T0 = cache['T0'] 
     _, heatflux = physics.QSHlimited(x, ne, Zbar, T, 0.17)
+
     F=(3/2*ne)*(T - T0)*Kb/dt - np.gradient(heatflux)
-    return F/scalator
+    return F/(scalator)
 
 def initialize(para):
     """ Initialize key data
@@ -219,7 +220,7 @@ def storeUpdateResult(cache):
     Kn_nonloc_prof[:,timeStep] = Kn_nonloc.reshape(1,-1)
     return cache
 
-def newtonIteration(para, cache, SH):
+def newtonIteration(para, cache, SH, verbose):
     """ Newton's Iteration for Equation System
     
     Process:
@@ -243,6 +244,7 @@ def newtonIteration(para, cache, SH):
     energy_init=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
     #I use scalator because scipy takes F full of big numbers, calculates jacobian with corr-y huge numbers and assumes its inverse as zero :C
     if SH:
+
         firstF=F_Newton_Krylov_SH(cache['T'], para=para, cache=cache, scalator=1)
         F_onevar= lambda x: F_Newton_Krylov_SH(x, para=para, cache=cache, scalator=norm)  #lambda x: f(1,2,x)
     else:
@@ -281,7 +283,7 @@ def newtonIteration(para, cache, SH):
     ####From here it was NOT ChatGPT...mostly
 
     #Creates an anonymous function of only one variable (as scipy requests)
-    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T'], f_rtol=5e-9, verbose=False, callback=callbackfunc, iter=19)
+    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T'], f_rtol=1e3*para['convergence'], verbose=verbose, callback=callbackfunc)
     energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
     residue, slump, numofiters= callbackfunc(cache['T'], F_onevar)
     log = cache['Log']
@@ -303,7 +305,7 @@ def newtonIteration(para, cache, SH):
     return cache
 
 
-def solve(para, SH=False):
+def solve(para, SH=False, verbose=False):
     """ Main function to solve heat conduction
     
     Input: a Pandas series containing all parameters
@@ -326,7 +328,7 @@ def solve(para, SH=False):
     print(' [Step] [Time] [Iter] [Residue] [Newton outcome] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
-        cache = newtonIteration(para, cache, SH)
+        cache = newtonIteration(para, cache, SH, verbose)
         cache = storeUpdateResult(cache)
     TProfile = pd.DataFrame(cache['TProfile'], columns=cache['times'],index=para['x'])
     alpha_prof = pd.DataFrame(cache['alpha_prof'], columns=cache['times'],index=para['x'])

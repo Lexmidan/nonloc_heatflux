@@ -65,3 +65,33 @@ def secondOrder(U, Ug1, Ug2, alphas, betas, kappa):
                     -.5*(alphas[i+1]*kappa[i+1]*U[i+1]**betas[i+1] + alphas[i]*kappa[i]*U[i]**betas[i])*(U[i+1] - U[i])
 
     return d2U
+
+
+
+def secondOrderq(U, Ug1, Ug2):
+    """ Calculate second order derivative
+    
+    Centered differencing approximation.
+    D2U/Dx2 = (U[i-1] - 2U[i] + U[i+1])/dx**2
+    
+    For BC nodes, use the values on ghost nodes.
+    
+    Ug1: value on ghost node at x=0
+    Ug2: value on ghost node at x=L
+    
+    Please see any numerical analysis text book for details.
+    
+    Return: numpy array
+    """
+    
+    d2U = np.zeros((U.size,))
+
+    for i in range(0, U.size):
+        if i==0:
+            d2U[i] = 0.5*(U[i+1]-Ug1)
+        elif i==(U.size - 1):
+            d2U[i] = 0.5*(Ug2-U[i-1])
+        else:
+            d2U[i] = 0.5*(U[i+1]-U[i-1])
+
+    return d2U
