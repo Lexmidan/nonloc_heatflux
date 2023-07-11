@@ -30,7 +30,7 @@ def Qeff(X, flim):
 
 def QSHlimited(x, ne, Zbar, Te, flim):
     #calculating Te gradient
-    N = int(len(x) / 10)
+    N = int(len(x))
     xref = np.linspace(min(x), max(x), N)
     Te = getsub(Te, x, xref)
     ne = getsub(ne, x, xref)

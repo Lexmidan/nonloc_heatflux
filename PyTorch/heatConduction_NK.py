@@ -11,9 +11,9 @@ import time
 import torch
 from matplotlib import pyplot as plt
 import scipy
+import physics
 
-
-def F_Newton_Krylov(T, para, cache):
+def F_Newton_Krylov(T, para, cache, scalator):
         # BC informations
     typeX0 = para['x=0 type']
     valueX0 = para['x=0 value']
@@ -27,6 +27,13 @@ def F_Newton_Krylov(T, para, cache):
     dx = para['deltaX']
     dt = cache['dt']  
     T0 = cache['T0'] 
+
+    # scaling=para['scaling']
+    # Tscaled=(T-scaling['T'].loc['mean'])/scaling['T'].loc['std']
+    # gradTscaled=(gradT-scaling['gradT'].loc['mean'])/scaling['gradT'].loc['std']
+    # nescaled=(ne-scaling['n'].loc['mean'])/scaling['n'].loc['std']
+    # Zscaled=(Z-scaling['Z'].loc['mean'])/scaling['Z'].loc['std']
+
 
     alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
     ##Coulomb logarithm 
@@ -75,8 +82,20 @@ def F_Newton_Krylov(T, para, cache):
     F=(3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2
     cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
     cache['coulog'] = coulog
-    return F
+    return F/(scalator)
 
+
+def F_Newton_Krylov_SH(T, para, cache, scalator):
+        # BC informations
+    ne = cache['ne']
+    Kb = para['boltzman']
+    Zbar = cache['Zbar']
+    x = para['x']
+    dt = cache['dt']  
+    T0 = cache['T0'] 
+    _, heatflux = physics.QSHlimited(x, ne, Zbar, T, 0.17)
+    F=(3/2*ne)*(T - T0)*Kb/dt - np.gradient(heatflux)
+    return F/scalator
 
 def initialize(para):
     """ Initialize key data
@@ -200,7 +219,7 @@ def storeUpdateResult(cache):
     Kn_nonloc_prof[:,timeStep] = Kn_nonloc.reshape(1,-1)
     return cache
 
-def newtonIteration(para, cache):
+def newtonIteration(para, cache, SH):
     """ Newton's Iteration for Equation System
     
     Process:
@@ -221,28 +240,59 @@ def newtonIteration(para, cache):
     cache['time']+=cache['dt']
     cache['times'] = np.append(cache['times'],cache['time'])
 
+    energy_init=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+    #I use scalator because scipy takes F full of big numbers, calculates jacobian with corr-y huge numbers and assumes its inverse as zero :C
+    if SH:
+        firstF=F_Newton_Krylov_SH(cache['T'], para=para, cache=cache, scalator=1)
+        F_onevar= lambda x: F_Newton_Krylov_SH(x, para=para, cache=cache, scalator=norm)  #lambda x: f(1,2,x)
+    else:
+        firstF=F_Newton_Krylov(cache['T'], para=para, cache=cache, scalator=1)
+        F_onevar= lambda x: F_Newton_Krylov(x, para=para, cache=cache, scalator=norm)  #lambda x: f(1,2,x)
+    norm = np.linalg.norm(firstF)
+
+    #global numofiters
+    #numofiters = 0 #counter variable for scipy
+
+
+    #####IT WAS ALL ChatGPT!...mostly (Counts how many times is function called <=> number of iterations)
+    def count_calls(func):
+        def wrapper(*args, **kwargs):
+            wrapper.calls += 1  # Increment the call count
+            return func(*args, **kwargs)
+
+        wrapper.calls = 0  # Initialize the call count
+        return wrapper
+
+    @count_calls
+    def have_you_been_touched():
+        return 'Yep'
+
+    def callbackfunc(x, f, norm=norm): 
+        #Function, that will return relevant info about process of jacobian solving (scipy.optimize.newton_krylov)
+        #numofiters+=1
+        try: 
+            residue = np.abs(f/energy_init)
+            slump = np.linalg.norm(f)
+        except TypeError:
+            slump = np.linalg.norm(f(x))
+            residue = np.abs(slump/energy_init)
+        have_you_been_touched()
+        return residue, slump, have_you_been_touched.calls
+    ####From here it was NOT ChatGPT...mostly
 
     #Creates an anonymous function of only one variable (as scipy requests)
-    F_onevar= lambda T: F_Newton_Krylov(T, para=para, cache=cache)#lambda c: f(1,2,c)
-    cache['T'] = scipy.optimize.newton_krylov(F_onevar, np.ones(len(cache['T0'])) )
-
+    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T'], f_rtol=5e-9, verbose=False, callback=callbackfunc, iter=19)
+    energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
+    residue, slump, numofiters= callbackfunc(cache['T'], F_onevar)
     log = cache['Log']
     ts = cache['ts']
 
-    ##################TODO: remove these placeholders
-    energy_init=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
-    energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
-    n=0
-    norm=1
-    slump=1
-    ###########################
-
     print('[{:3.0f}'.format(ts), ']',
           '[{:6.2E}'.format(cache['time']),']',
-          '[{:2.0f}'.format(n+1), ']',
+          '[{:2.0f}'.format(numofiters), ']',
           #'[{:8.2E}'.format(norm/energy),']',
-          '[{:8.2E}'.format(np.abs(energy_init-energy)/energy_init),']', #shows what portion of energy was lost in one time step
-          '[{:8.2E}'.format(norm/slump),']',
+          '[{:8.2E}'.format(residue),']', #shows what portion of energy was lost in one time step
+          '[{:8.2E}'.format(slump/norm),']',
           '[{:8.2E}'.format(np.max(cache['beta'])),']',
           '[{:8.2E}'.format(np.max(cache['alpha'])),']',
           '[{:8.2E}'.format(np.min(T)),']',
@@ -253,7 +303,7 @@ def newtonIteration(para, cache):
     return cache
 
 
-def solve(para):
+def solve(para, SH=False):
     """ Main function to solve heat conduction
     
     Input: a Pandas series containing all parameters
@@ -269,13 +319,14 @@ def solve(para):
     """
     
     print(" Heat Conduction Solver")
+    print(f'Use SH ? {SH}')
     start = time.time()
     cache = initialize(para)
     numOfTimeStep = para['numberOfTimeStep']
     print(' [Step] [Time] [Iter] [Residue] [Newton outcome] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
         cache['ts'] = timeStep
-        cache = newtonIteration(para, cache)
+        cache = newtonIteration(para, cache, SH)
         cache = storeUpdateResult(cache)
     TProfile = pd.DataFrame(cache['TProfile'], columns=cache['times'],index=para['x'])
     alpha_prof = pd.DataFrame(cache['alpha_prof'], columns=cache['times'],index=para['x'])

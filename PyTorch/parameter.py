@@ -46,7 +46,7 @@ def main(model):
     df.at['CPU'] = 1
     
     # Grid
-    df.at['Time_multiplier'] = 3e-7
+    df.at['Time_multiplier'] = 2e-7
     df.at['length'] = init_profile['x'].iloc[-1]
     df.at['numberOfNode'] = len(init_profile)
     df.at['x']=init_profile['x'].values
@@ -97,10 +97,10 @@ def main(model):
                                                                                  #length of the input vector
     # Solution
     df.at['Break_condition'] = 'max_iter' #'max_iter'/'lower_bound'   #Chooses n what condition will newton iteration stop
-    df.at['numberOfTimeStep'] = 100#400
+    df.at['numberOfTimeStep'] = 60#400
     df.at['deltaX'] = df['x'][11]-df['x'][10]  #for different [i] dx differs at 16th decimal place
     df.at['maxIteration'] = 10
-    df.at['convergence'] = 1e-8
+    df.at['convergence'] = 5e-9
     df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
 
     return df
