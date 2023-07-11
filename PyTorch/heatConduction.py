@@ -142,7 +142,7 @@ def assemble(para, cache):
 
 
 
-
+    F2 = (3/2*ne)*(T - T0)*Kb/dt  + 2e6*np.gradient(heatflux, x) # Vectorization   dT/dt - a d2T/dx2=F/dt
     F = (3/2*ne)*(T - T0)*Kb/dt  + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
     # Store in cache
     cache['F'] = F; cache['Jacobian'] = Jacobian

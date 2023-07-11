@@ -67,7 +67,7 @@ def F_Newton_Krylov(T, para, cache, scalator):
         cache['ratio']=ratio
 
 
-    F=(3/2*ne)*(T - T0)*Kb/dt + np.gradient(heatflux, x)
+    F=(3/2*ne)*(T - T0)*Kb/dt + 2e6*np.gradient(heatflux, x)
     cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'] = alphas, betas, kappa, Kn
     cache['heatflux']=heatflux
     cache['coulog'] = coulog
@@ -76,7 +76,7 @@ def F_Newton_Krylov(T, para, cache, scalator):
     return F/scalator
 
 
-def F_Newton_Krylov_SH(T, para, cache, scalator):
+def F_Newton_Krylov_SH(T, para=None, cache=None, scalator=None):
         # BC informations
     ne = cache['ne']
     Kb = para['boltzman']
@@ -100,8 +100,8 @@ def F_Newton_Krylov_SH(T, para, cache, scalator):
     Qfs = erg2J * vTh * eTh
     Qeff = 0.17 * Qfs * (1.0 - np.exp(-Qloc/(0.17*Qfs)))
 
-
-    F=(3/2*ne)*(T - T0)*Kb/dt + 1e6*np.gradient(Qeff, x)
+    #WHY DA HELL IS THERE 2e6 ?! => the only way it works. np.gradient gives different result for some reason
+    F=(3/2*ne)*(T - T0)*Kb/dt + 2e6*np.gradient(Qeff, x)
     return F/scalator
 
 def initialize(para):
@@ -264,7 +264,7 @@ def newtonIteration(para, cache, SH, verbose):
     ####From here it was NOT ChatGPT...mostly
 
     #Creates an anonymous function of only one variable (as scipy requests)
-    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T'], f_rtol=5e-4, verbose=verbose, callback=callbackfunc)
+    cache['T'] = scipy.optimize.newton_krylov(F_onevar, cache['T'], f_rtol=5e-9,iter=12, verbose=verbose, callback=callbackfunc)
     energy=np.mean(1.5*para['boltzman']*cache['T']*cache['ne'])
     residue, slump, numofiters= callbackfunc(cache['T'], F_onevar)
     log = cache['Log']

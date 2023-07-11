@@ -97,11 +97,12 @@ def main(model):
                                                                                  #length of the input vector
     # Solution
     df.at['Break_condition'] = 'max_iter' #'max_iter'/'lower_bound'   #Chooses n what condition will newton iteration stop
-    df.at['numberOfTimeStep'] = 30#400
+    df.at['numberOfTimeStep'] = 200#400
     df.at['deltaX'] = df['x'][11]-df['x'][10]  #for different [i] dx differs at 16th decimal place
     df.at['maxIteration'] = 10
-    df.at['convergence'] = 5e-9
+    df.at['convergence'] = 2e-3
     df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
+    df.at['use SH limiter'] = True
 
     return df
 
