@@ -11,7 +11,7 @@ import numpy as np
 import pandas as pd
 
 
-def evolutionField(results):
+def evolutionField(results, name):
     """ Generate 3D temperature fields
     
     For better understanding of the results
@@ -22,19 +22,34 @@ def evolutionField(results):
     """
     
     X = results.index
-    Y = results.columns
+    Y = results.columns*1e9
     X, Y = np.meshgrid(X, Y)
     
-    fig = plt.figure(figsize=(8,6))
+    fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot(projection='3d')
-    ax.set_xlabel('x, m')
-    ax.set_ylabel('Time, s')
-    ax.set_zlabel('Value')
+    ax.set_xlabel(r'$x$ [m]', fontsize=16,labelpad=15)
+    ax.set_ylabel(r'$t$ [ns]', fontsize=16,labelpad=15)
+    ax.set_zlabel(name, fontsize=16,labelpad=15)
+
+
+    ax.tick_params(axis='x',which='both',bottom=True,top=False,labelbottom=True, labelsize=15, size=80)
+    ax.tick_params(axis='x',which='minor',bottom=True,top=False,labelbottom=True, labelsize=15, size=4)
+    ax.tick_params(axis='y',which='both',left=True,right=False, labelsize=15, size=80)
+    ax.tick_params(axis='y',which='minor',left=True,right=False, labelsize=15, size=4)
+    ax.tick_params(axis='z',which='both',left=True,right=False, labelsize=15, size=80)
+    ax.tick_params(axis='z',which='minor',left=True,right=False, labelsize=15, size=4)
+
+    #ax.zaxis.set_tick_params(which='both',left=True,right=False, labelsize=15, size=200)
+    # num_ticks = 7.
+    # ax.set_yticks(np.arange(num_ticks)/(num_ticks-1) * (results.columns[1]-results.columns[0]))
+    # ax.set_xticks(np.arange(num_ticks)/(num_ticks-1) * (results.index[1]-results.index[0]))
+
+    ax.grid(visible=None, which='minor', axis='both')
     Z = results.T.values
     ax.plot_surface(X, Y, Z, 
                     cmap=cm.seismic,
                     linewidth=0, 
-                    antialiased=False)
+                    antialiased=True)
     plt.show()
 
 

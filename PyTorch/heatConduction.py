@@ -11,7 +11,6 @@ import time
 import torch
 from matplotlib import pyplot as plt
 import scipy
-import physics
 
 def assemble(para, cache):
     """ Assemble linear system Jacobian * dx = F
@@ -64,8 +63,7 @@ def assemble(para, cache):
     Kn = -lamb*gradT/T
     kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
     cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    kQSH = 6.1e+02
-    
+    kQSH = 6.1e+02 # scaling constant corresponding to the SCHICK
     #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
 
     """
@@ -76,6 +74,7 @@ def assemble(para, cache):
         alphas = para['alphas']
         betas = para['betas']
         heatflux = -(kQSH/Z)*((Z+0.24)/(Z+4.2))*T**2.5*gradT
+        
     else:
         scale=para['scaling']
         alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
@@ -129,139 +128,10 @@ def assemble(para, cache):
 
 
     # Calculate F (right hand side vector)
+    
     d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
-
-
-
-
-    me = 9.1094e-28 # [g]
-    eV2K = 1.1604e4 # K = eV2K * eV
-    erg2J = 1e-7
-    Qfs =  v * Kb*ne*T
-    Qeff = 0.17 * Qfs * (1.0 - np.exp(-heatflux/(0.17*Qfs)))
-
-
-
-    F2 = (3/2*ne)*(T - T0)*Kb/dt  + 2e6*np.gradient(heatflux, x) # Vectorization   dT/dt - a d2T/dx2=F/dt
-    F = (3/2*ne)*(T - T0)*Kb/dt  + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
-    # Store in cache
-    cache['F'] = F; cache['Jacobian'] = Jacobian
-    cache['alpha'], cache['beta'], cache['kappa'], cache['Kn'], cache['heatflux'] = alphas, betas, kappa, Kn, heatflux
-    cache['coulog'] = coulog
-    return cache
-
-def assemble_limiter(para, cache):
-    """ Assemble linear system Jacobian * dx = F
-    
-    Process:
-        0. Obtain relevant informations
-        1. Loop over grid:
-            1.1 Deal with BC node at x=0
-            1.2 Deal with BC node at x=L
-            1.3 Deal with interior nodes
-            1.4 Obtain values on imaginary nodes (Ug1 and Ug2)
-                for two BCs
-            1.4 Assemble Jacobian (a diagonal matrix)
-        2. Calculate temperature gradient dT2
-        3. Assemble F
-    
-    Return: dictionary containing cache data
-    """
-
-
-
-    
-
-    # BC informations
-    typeX0 = para['x=0 type']
-    valueX0 = para['x=0 value']
-    typeXL = para['x=L type']
-    valueXL = para['x=L value']
-    ne = cache['ne']
-    Z = cache['Zbar']
-    Kn = cache['Kn']
-    Kb = para['boltzman']
-    x = para['x']
-    dx = para['deltaX']
-
-    numberOfNode = para['numberOfNode']
-    # Containers
-    T = cache['T']; T0 = cache['T0']        #let T=T[i,j] then T0=T[i, j-1]
-    F = cache['F']; Jacobian = cache['Jacobian']
-    dt = cache['dt']  
-
-
-    alphas, betas, heatflux = cache['alpha'], cache['beta'], cache['heatflux']
-        ##Coulomb logarithm 
-    coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
-    
-        ##Thermal velocity (profile)
-    v=np.sqrt(T*Kb/para['m_e'])
-        ##Lambda mean free path
-    lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
-    gradT=np.gradient(T,x)
-    ##Knudsen number accordint (5)
-    Kn = -lamb*gradT/T
-    kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
-    cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    
-    #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
-
-    """
-    Parameters given by NN:
-    """    
-    
-    if para['NNmodel']==None:
-        alphas = para['alphas']
-        betas = para['betas']
-        heatflux = physics.QSHlimited(x, ne, Z, T, 0.17)
-    else:
-        raise('Q_SH cannot be calculateb for model')
-
-
-    '''    
-    Loop over grid
-    '''
-
-
-    for i in range(0, numberOfNode):
-        # BC node at x=0
-        if i == 0:
-            if typeX0 == 'heatFlux':
-                Ug1 = utility.fixedGradient(valueX0, kappa[i], dx, T[0], alphas[i], betas[i]) #boundary values
-                Jacobian[0][1] = (1/dx)*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            elif typeX0 == 'fixedTemperature':
-                Ug1 = utility.fixedValue(valueX0, T[1])
-                Jacobian[0][1] = 0
-            Jacobian[0][0] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i]*kappa[i]*Ug1**betas[i]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(Ug1+T[i+1]))
-        # BC node at x=L
-        elif i == numberOfNode-1:
-            if typeXL == 'heatFlux':
-                Ug2 = utility.fixedGradient(valueXL, kappa[i], dx, T[-1], alphas[i], betas[i])  #boundary values
-                Jacobian[-1][-2] = (1/dx)*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            elif typeXL == 'fixedTemperature':
-                Ug2 = utility.fixedValue(valueXL, T[-2])
-                Jacobian[-1][-2] = 0
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i]*kappa[i]*Ug2**betas[i] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+Ug2))  
-        # Interior nodes
-
-        else:   #!!! \alpha_{i+1/2} := alpha[i]
-            Jacobian[i][i+1] = (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*betas[i+1]*T[i+1]**(betas[i+1]-1)*T[i]\
-                                           -(betas[i+1]+1)*alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            
-            Jacobian[i][i-1] = (1/dx**2)*.5*(betas[i-1]*kappa[i-1]*alphas[i-1]*T[i-1]**(betas[i-1]-1)*T[i]\
-                                           -(betas[i-1]+1)*alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1] - alphas[i]*kappa[i]*T[i]**betas[i])
-            
-            Jacobian[i][i] = (3/2*ne[i]*Kb)/dt + (1/dx**2)*.5*(alphas[i+1]*kappa[i+1]*T[i+1]**betas[i+1] + alphas[i-1]*kappa[i-1]*T[i-1]**betas[i-1]\
-                            +2*(betas[i]+1)*alphas[i]*kappa[i]*T[i]**betas[i] - (betas[i]*alphas[i]*kappa[i]*T[i]**(betas[i]-1))*(T[i-1]+T[i+1]))
-
-
-    # Calculate F (right hand side vector)
-    d2T = utility.secondOrder(T, Ug1, Ug2, alphas, betas,kappa)
+    hfl=d2T/dx**2 
+    F2= (3/2*ne)*(T - T0)*Kb/dt + np.gradient(heatflux, x)
     F = (3/2*ne)*(T - T0)*Kb/dt + d2T/dx**2 # Vectorization   dT/dt - a d2T/dx2=F/dt
 
     # Store in cache
@@ -555,9 +425,13 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
 
     Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = lng, sigma = 6), mode='same') #length of the kernel = lng, sigma = 6, 
     heatflux = (model.forward(torch.tensor(Qdata).float())[:,0] * model.scaling['Q']['std'] + model.scaling['Q']['mean']).detach().numpy()
+    #heatflux = scipy.ndimage.gaussian_filter(heatflux, sigma=2)
+    heatflux = scipy.signal.savgol_filter(heatflux, 11, 2)
     beta = (model.forward(torch.tensor(Qdata).float())[:,1] * model.scaling['beta']['std'] + model.scaling['beta']['mean']).detach().numpy()
+    #beta = scipy.ndimage.gaussian_filter(beta, sigma=2)
+    beta = scipy.signal.savgol_filter(beta, 11, 2)
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-
+    beta[beta>5] = 4
     #####OLD INTERFACE using AlphaBetaModel
 
     #alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
@@ -618,7 +492,6 @@ def qqRatio(qNN, kappa, x, T, gradT, Z, n, KnUnscaled, lng):
     return df, Ratio
 
 
-
 def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     '''
     Calculates local heatflux, then by comparing the latter with heatflux given by NN calculates alpha, after which 
@@ -636,15 +509,16 @@ def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     kQSH = 6.1e+02 * 1e3**2.5 * 1e3 # scaling constant consistent with SCHICK and T in keV
     local_heatflux_beta_model = - kQSH / Z[:] * ((Z[:] + 0.24) / (Z[:] + 4.2))\
       * TkeV[:]**beta * gradTkeV[:]
+    
+    local_heatflux_beta_model[local_heatflux_beta_model<1e-3]=qNN[local_heatflux_beta_model<1e-3]
 
     alpha = qNN/local_heatflux_beta_model
+    alpha[alpha>10]=10
+    alpha[alpha<1e-6]=1e-6
     alpha = alpha_cor(alpha, Kn)
     
-    #
-    alpha[:120]=1
+    #alpha[alpha>100]=1
     return alpha  
-
-
 #fig1, ax1 = plt.subplots(figsize=(6,3))
 
 
