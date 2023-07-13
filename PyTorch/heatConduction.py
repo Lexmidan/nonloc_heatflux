@@ -63,7 +63,7 @@ def assemble(para, cache):
     Kn = -lamb*gradT/T
     kappa = para['conductivity']*1.31e10/coulog*para['tau']**(cache['beta']-5/2)
     cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
-    
+    kQSH = 6.1e+02
     #Kn= np.sqrt(T*Kb/para['m_e'])**4/(ne*(4 * const.pi * df['q_e']**4/df['m_e']**2)*(23-np.log(np.sqrt(ne)*Z/T**1.5)))*1/np.sqrt(Z+1)*gradT/T
 
     """
@@ -73,8 +73,16 @@ def assemble(para, cache):
     if para['NNmodel']==None:
         alphas = para['alphas']
         betas = para['betas']
-        heatflux = para['heatflux']
-    else:
+        heatflux = -(kQSH/Z)*((Z+0.24)/(Z+4.2))*T**2.5*gradT
+        if cache['FluxLimiter']:
+            # Local thermal energy density
+            erg2J = 1e-7
+            eTh = ne * Kb * T
+            Qfs = erg2J * v * eTh
+            heatflux = 0.17 * Qfs * (1.0 - np.exp(-heatflux/(0.17*Qfs)))
+            Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = 23, sigma = 6), mode='same')
+            alphas = calc_alpha(heatflux, betas, Z, T, gradT, Kn_nonloc)
+    elif para['NNeachiter'] and not cache['FluxLimiter']:
         scale=para['scaling']
         alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
                                         ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
@@ -83,6 +91,8 @@ def assemble(para, cache):
         dataset, qqratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
                                                                           ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
         cache['qqratio']=qqratio.values
+    elif para['NNmodel']!=None and cache['FluxLimiter']:
+        raise Exception('Cannot use both model and limiter')
 
 
     '''    
@@ -288,6 +298,30 @@ def newtonIteration(para, cache):
     log = cache['Log']
     ts = cache['ts']
 
+
+    if ~para['NNeachiter'] and para['NNmodel']!=None:
+        ne = cache['ne']
+        Z = cache['Zbar']
+        Kn = cache['Kn']
+        x = para['x']
+        gradT=np.gradient(T,x)
+        coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5) #np.ones(len(para['x'])) #23-np.log(np.sqrt(ne)*Z/T**1.5)
+        Kb = para['boltzman']
+            ##Thermal velocity (profile)
+        v=np.sqrt(T*Kb/para['m_e'])
+            ##Lambda mean free path
+        lamb = v**4/(ne*para['Gamma']*coulog)*1/np.sqrt(Z+1)
+        gradT=np.gradient(T,x)
+        ##Knudsen number accordint (5)
+        Kn = -lamb*gradT/T
+        scale=para['scaling']
+        cache['alpha'], cache['beta'], cache['heatflux'], cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
+                                        ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
+                                                                                #size of the input vector
+
+
+
+
     if para['Break_condition']=='max_iter':
         for n in range(maxIteration):
             cache = assemble(para, cache)
@@ -337,7 +371,7 @@ def newtonIteration(para, cache):
     return cache
 
 
-def solve(para):
+def solve(para, FluxLimiter=False):
     """ Main function to solve heat conduction
     
     Input: a Pandas series containing all parameters
@@ -355,6 +389,7 @@ def solve(para):
     print(" Heat Conduction Solver")
     start = time.time()
     cache = initialize(para)
+    cache['FluxLimiter']=FluxLimiter
     numOfTimeStep = para['numberOfTimeStep']
     print(' [Step] [Time] [Iter] [Residue] [Newton outcome] [Max beta] [Max alpha] [Minimal T] [Maximal T] [meanEnergy]')
     for timeStep in range(1, numOfTimeStep+1):
@@ -413,7 +448,7 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
             datapoint=np.append(datapoint, nescaled[ind:ind+lng]) 
             nonloc_tester.loc[len(nonloc_tester.index)]=[x[ind],x[ind+lng], any(np.abs(Kn[ind:ind+lng])<1e-3)]
 
-            Kn_mean=np.append(Kn_mean, np.mean(Kn[ind:ind+lng])) #
+            #Kn_mean=np.append(Kn_mean, np.mean(Kn[ind:ind+lng])) #
             #datapoint=np.append(datapoint, Kn.iloc[ind:ind+lng]) 
             #datapoint=np.append(datapoint, x[ind:ind+lng])
             # TODO: what is the appropriate scaling here? Global (max(x)-min(x)) might be to large!
@@ -422,12 +457,12 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
     Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = lng, sigma = 6), mode='same') #length of the kernel = lng, sigma = 6, 
     heatflux = (model.forward(torch.tensor(Qdata).float())[:,0] * model.scaling['Q']['std'] + model.scaling['Q']['mean']).detach().numpy()
     #heatflux = scipy.ndimage.gaussian_filter(heatflux, sigma=2)
-    heatflux = scipy.signal.savgol_filter(heatflux, 11, 2)
+    #heatflux = scipy.signal.savgol_filter(heatflux, 11, 2)
     beta = (model.forward(torch.tensor(Qdata).float())[:,1] * model.scaling['beta']['std'] + model.scaling['beta']['mean']).detach().numpy()
     #beta = scipy.ndimage.gaussian_filter(beta, sigma=2)
-    beta = scipy.signal.savgol_filter(beta, 11, 2)
+    #beta = scipy.signal.savgol_filter(beta, 11, 2)
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-    beta[beta>5] = 4
+
     #####OLD INTERFACE using AlphaBetaModel
 
     #alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
@@ -443,14 +478,15 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
         #alphas = np.append(alphas[0], alphas)
         #betas = np.append(betas[0], betas)
         heatflux = np.append(heatflux[0], heatflux)
-        Kn_mean = np.append(Kn_mean[0], Kn_mean)
+        #Kn_mean = np.append(Kn_mean[0], Kn_mean)
 
     for i in range(int((len(x)-(ind-1))/2)):            
         beta = np.append(beta, beta[-1])  
         #alphas = np.append(alphas, alphas[-1])
         #betas = np.append(betas, betas[-1])
         heatflux = np.append(heatflux, heatflux[-1])
-        Kn_mean = np.append(Kn_mean, Kn_mean[-1])
+        #Kn_mean = np.append(Kn_mean, Kn_mean[-1])
+    #Flux limiter
 
     #alpha calculated with 
     alpha = calc_alpha(heatflux, beta, Z, T, gradT, Kn_nonloc) #Kn_mean
@@ -488,7 +524,7 @@ def qqRatio(qNN, kappa, x, T, gradT, Z, n, KnUnscaled, lng):
     return df, Ratio
 
 
-def calc_alpha(qNN, beta, Z, T, gradT, Kn):
+def calc_alpha(qNN, beta, Z, T, gradT, Kn, AdjustAlpha=True):
     '''
     Calculates local heatflux, then by comparing the latter with heatflux given by NN calculates alpha, after which 
     alpha is adjusted to the principle (Kn~0 => alpha:=1)
@@ -509,9 +545,9 @@ def calc_alpha(qNN, beta, Z, T, gradT, Kn):
     local_heatflux_beta_model[local_heatflux_beta_model<1e-3]=qNN[local_heatflux_beta_model<1e-3]
 
     alpha = qNN/local_heatflux_beta_model
-    alpha[alpha>10]=10
-    alpha[alpha<1e-6]=1e-6
-    alpha = alpha_cor(alpha, Kn)
+
+    if AdjustAlpha:
+        alpha = alpha_cor(alpha, Kn)
     
     #alpha[alpha>100]=1
     return alpha  
@@ -530,7 +566,7 @@ def gaussian_kernel(size,sigma):
     gaussian_filter = [1 / (sigma * np.sqrt(2*np.pi)) * np.exp(-x**2/(2*sigma**2)) for x in filter_range]
     return gaussian_filter
 
-def alpha_cor(alpha, Kn, s=2700, p=1):
+def alpha_cor(alpha, Kn, s=4e5, p=1):
     '''
     Smooth version of alpha dependence on Kn. The main idea is to grant alpha_cor=1 as Kn->0 and alpha_cor=alpha as Kn->infty
     
