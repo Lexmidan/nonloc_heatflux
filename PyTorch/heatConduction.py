@@ -466,9 +466,21 @@ def qqRatio(qNN, kappa, x, T, gradT, Z, n, KnUnscaled, lng):
 
     return df, Ratio
 
+def alpha_cor(alpha, Kn, s=32000, p=1):
+    '''
+    Smooth version of alpha dependence on Kn. The main idea is to grant alpha_cor=1 as Kn->0 and alpha_cor=alpha as Kn->infty
+    
+    args:
+        alpha - 1-D (n,) np.array() The input profile alpha, independent on Kn.
+        Kn - 1-D (n,) np.array() Knudsen number profile
+        s, p - parameters of the smoothing function. Control the rate of alpha_cor converging to alpha as Kn->infty
+    '''
 
+    alpha_cor = 1+(s*(alpha[:]-1)*Kn[:]**(2*p))/(1+s*Kn[:]**(2*p))
 
-def calc_alpha(qNN, beta, Z, T, gradT, Knmean):
+    return alpha_cor
+
+def calc_alpha(qNN, beta, Z, T, gradT, Kn_nonloc):
 
 
     # Get beta local heat flux
@@ -476,9 +488,12 @@ def calc_alpha(qNN, beta, Z, T, gradT, Knmean):
     kQSH = 6.1e+02 * 1e3**2.5 * 1e3 # scaling constant consistent with SCHICK and T in keV
     local_heatflux_beta_model = - kQSH / Z[:] * ((Z[:] + 0.24) / (Z[:] + 4.2))\
       * TkeV[:]**beta * gradTkeV[:]
-
+    #local_heatflux_beta_model[:120]=qNN[:120]
+    local_heatflux_beta_model[local_heatflux_beta_model<1e-3]=qNN[local_heatflux_beta_model<1e-3]
     alpha = qNN/local_heatflux_beta_model
-    alpha[np.abs(Knmean)<1e-3]=1
+
+    alpha = alpha_cor(alpha, Kn_nonloc)
+    
     
     return alpha  
 
