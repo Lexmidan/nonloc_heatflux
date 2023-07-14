@@ -81,7 +81,7 @@ def assemble(para, cache):
             Qfs = erg2J * v * eTh
             heatflux = 0.17 * Qfs * (1.0 - np.exp(-heatflux/(0.17*Qfs)))
             Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = 23, sigma = 6), mode='same')
-            alphas = calc_alpha(heatflux, betas, Z, T, gradT, Kn_nonloc)
+            alphas = calc_alpha(heatflux, betas, Z, T, gradT, Kn_nonloc, AdjustAlpha=False)
     elif para['NNeachiter'] and not cache['FluxLimiter']:
         scale=para['scaling']
         alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
@@ -548,6 +548,7 @@ def calc_alpha(qNN, beta, Z, T, gradT, Kn, AdjustAlpha=True):
 
     if AdjustAlpha:
         alpha = alpha_cor(alpha, Kn)
+        #alpha = alpha_cor2(alpha, np.arange(len(alpha)))#Kn)
     
     #alpha[alpha>100]=1
     return alpha  
@@ -566,7 +567,7 @@ def gaussian_kernel(size,sigma):
     gaussian_filter = [1 / (sigma * np.sqrt(2*np.pi)) * np.exp(-x**2/(2*sigma**2)) for x in filter_range]
     return gaussian_filter
 
-def alpha_cor(alpha, Kn, s=4e5, p=1):
+def alpha_cor(alpha, Kn, s=2.5e5, p=1):
     '''
     Smooth version of alpha dependence on Kn. The main idea is to grant alpha_cor=1 as Kn->0 and alpha_cor=alpha as Kn->infty
     
@@ -578,6 +579,21 @@ def alpha_cor(alpha, Kn, s=4e5, p=1):
 
     alpha_cor = 1+(s*(alpha[:]-1)*Kn[:]**(2*p))/(1+s*Kn[:]**(2*p))
 
+    return alpha_cor
+
+def alpha_cor2(alpha, x, s=1e-2, p=130, d=380):
+    '''
+    Smooth version of alpha dependence on Kn. The main idea is to grant alpha_cor=1 as Kn->0 and alpha_cor=alpha as Kn->infty
+    
+    args:
+        alpha - 1-D (n,) np.array() The input profile alpha, independent on Kn.
+        Kn - 1-D (n,) np.array() Knudsen number profile
+        s, p - parameters of the smoothing function. Control the rate of alpha_cor converging to alpha as Kn->infty
+    '''
+    alpha[:p]=1
+    alpha_cor = 1+(s*(alpha[:]-1)*(x[:]-p)**(2))/(1+s*(x[:]-p)**(2))
+    alpha_cor = 1+(s*(alpha[:]-1)*(x[:]-d)**(2))/(1+s*(x[:]-d)**(2))
+    alpha_cor[d:]=1
     return alpha_cor
 
 def gaussian_kernel(size,sigma):

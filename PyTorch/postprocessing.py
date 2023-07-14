@@ -27,7 +27,7 @@ def evolutionField(results, name):
     
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot(projection='3d')
-    ax.set_xlabel(r'$x$ [m]', fontsize=16,labelpad=15)
+    ax.set_xlabel(r'$x$ [mm]', fontsize=16,labelpad=15)
     ax.set_ylabel(r'$t$ [ns]', fontsize=16,labelpad=15)
     ax.set_zlabel(name, fontsize=16,labelpad=15)
 
