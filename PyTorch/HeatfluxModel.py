@@ -2,10 +2,7 @@ import torch
 import pytorch_lightning as pl
 from pytorch_lightning import Trainer
 import numpy as np
-import parameter as para
-import heatConduction as hc
-import scipy.constants as const
-import scipy
+
 class HeatFluxModel(pl.LightningModule): 
 
 ### Model ###
@@ -92,29 +89,11 @@ class AlphaBetaModel(HeatFluxModel):
         return beta    
     
     def alpha_model(self, x):
-        feature = self.feature_xc(x)
-        Z = feature['Z']; T =  feature['T']; gradT = feature['gradT'], ne = feature['n'], 
-        m_e = 9.1094*1e-28
-        q_e = 4.8032*1e-10 
-        coulog = 23-np.log(np.sqrt(ne)*Z/T**1.5)
-        Kb=1.602178e-12
-        v=np.sqrt(T*Kb/m_e)
-        Gamma= 4 * const.pi * q_e**4/m_e**2
-        lamb = v**4/(ne*Gamma*coulog)*1/np.sqrt(Z+1)
-        Kn = -lamb*gradT/T
-        #Kn_nonloc=scipy.signal.convolve(Kn, hc.gaussian_kernel(size = self.fcIn.in_features/4, sigma = 6), mode='same')
-        #alpha = hc.calc_alpha(self.heatflux_model(x), self.beta_model(x), Z, T, gradT, Kn_nonloc) 
+        #diffusive_heatflux_model = self.local_heatflux_model(x)
         diffusive_heatflux_model = self.local_heatflux_beta_model(x)
-        diffusive_heatflux_model[diffusive_heatflux_model<1e-3]=self.heatflux_model(x)[diffusive_heatflux_model<1e-3]
+        #diffusive_heatflux_model[diffusive_heatflux_model<1e-4]=1e11
         alpha = self.heatflux_model(x) / diffusive_heatflux_model
-        alpha[alpha<1e-6] = 1e-6
-        alpha = hc.alpha_cor(alpha,Kn)
-        
-        # #diffusive_heatflux_model = self.local_heatflux_model(x)
-        # diffusive_heatflux_model = self.local_heatflux_beta_model(x)
-        # #diffusive_heatflux_model[diffusive_heatflux_model<1e-4]=1e11
-        # alpha = self.heatflux_model(x) / diffusive_heatflux_model
-        # #alpha[diffusive_heatflux_model<1e-4]=10
+        #alpha[diffusive_heatflux_model<1e-4]=10
         return alpha
 
     def local_heatflux_beta_model(self, x):

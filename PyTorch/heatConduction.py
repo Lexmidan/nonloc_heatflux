@@ -74,15 +74,15 @@ def assemble(para, cache):
         alphas = para['alphas']
         betas = para['betas']
         heatflux = -(kQSH/Z)*((Z+0.24)/(Z+4.2))*T**2.5*gradT
-        if cache['FluxLimiter']:
+        if cache['FluxLimiter']!=None:
             # Local thermal energy density
             erg2J = 1e-7
             eTh = ne * Kb * T
             Qfs = erg2J * v * eTh
-            heatflux = 0.17 * Qfs * (1.0 - np.exp(-heatflux/(0.17*Qfs)))
+            heatflux = cache['FluxLimiter'] * Qfs * (1.0 - np.exp(-heatflux/(cache['FluxLimiter']*Qfs)))
             Kn_nonloc = scipy.signal.convolve(Kn, gaussian_kernel(size = 23, sigma = 6), mode='same')
             alphas = calc_alpha(heatflux, betas, Z, T, gradT, Kn_nonloc, AdjustAlpha=False)
-    elif para['NNeachiter'] and not cache['FluxLimiter']:
+    elif para['NNeachiter'] and cache['FluxLimiter']==None:
         scale=para['scaling']
         alphas, betas, heatflux, cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
                                         ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
@@ -91,7 +91,7 @@ def assemble(para, cache):
         dataset, qqratio =qqRatio(heatflux ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
                                                                           ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
         cache['qqratio']=qqratio.values
-    elif para['NNmodel']!=None and cache['FluxLimiter']:
+    elif para['NNmodel']!=None and cache['FluxLimiter']!=None:
         raise Exception('Cannot use both model and limiter')
 
 
@@ -371,7 +371,7 @@ def newtonIteration(para, cache):
     return cache
 
 
-def solve(para, FluxLimiter=False):
+def solve(para, FluxLimiter=None):
     """ Main function to solve heat conduction
     
     Input: a Pandas series containing all parameters
@@ -462,10 +462,11 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
     #beta = scipy.ndimage.gaussian_filter(beta, sigma=2)
     #beta = scipy.signal.savgol_filter(beta, 11, 2)
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-
+    beta[beta>2.5] =2.5
     #####OLD INTERFACE using AlphaBetaModel
 
-    #alphas=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
+    #alpha=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
+
     #betas=model.beta_model(torch.tensor(Qdata).float()).detach().numpy()
 
     ######
@@ -475,19 +476,19 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
     #beta, heatflux have all the same size corresponding to x
     for i in range(int((len(x)-len(beta))/2)):              
         beta = np.append(beta[0], beta)
-        #alphas = np.append(alphas[0], alphas)
+        #alpha = np.append(alpha[0], alpha)
         #betas = np.append(betas[0], betas)
         heatflux = np.append(heatflux[0], heatflux)
         #Kn_mean = np.append(Kn_mean[0], Kn_mean)
 
     for i in range(int((len(x)-(ind-1))/2)):            
         beta = np.append(beta, beta[-1])  
-        #alphas = np.append(alphas, alphas[-1])
+        #alpha = np.append(alpha, alpha[-1])
         #betas = np.append(betas, betas[-1])
         heatflux = np.append(heatflux, heatflux[-1])
         #Kn_mean = np.append(Kn_mean, Kn_mean[-1])
+    #alpha=alpha_cor(alpha, Kn_nonloc)
     #Flux limiter
-
     #alpha calculated with 
     alpha = calc_alpha(heatflux, beta, Z, T, gradT, Kn_nonloc) #Kn_mean
 
