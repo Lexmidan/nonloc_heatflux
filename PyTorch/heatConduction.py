@@ -462,7 +462,7 @@ def get_data_qless(model, x, T, gradT, Z, n, Kn, lng, scaling):
     #beta = scipy.ndimage.gaussian_filter(beta, sigma=2)
     #beta = scipy.signal.savgol_filter(beta, 11, 2)
     beta[beta<1e-6] = 1e-6 # Make sure the power of diffusivity is positive
-    beta[beta>2.5] =2.5
+    #beta[beta>2.5] =2.5
     #####OLD INTERFACE using AlphaBetaModel
 
     #alpha=model.alpha_model(torch.tensor(Qdata).float()).detach().numpy() 
