@@ -24,7 +24,7 @@ precal_beta=np.loadtxt('./NN/precalculated_beta.csv',delimiter=",", dtype = floa
 #####
 
 
-def main(model):
+def main(model, ieachiter=False):
     """ Generate parameter
     
     1. Generate system-level parameters
@@ -96,13 +96,18 @@ def main(model):
                                                             df['InitKnProfile'], int(df['NNmodel'].fcIn.in_features/4), df['scaling'])
                                                                                  #length of the input vector
     # Solution
-    df.at['Break_condition'] = 'max_iter' #'max_iter'/'lower_bound'   #Chooses n what condition will newton iteration stop
-    df.at['numberOfTimeStep'] = 300#400
     df.at['deltaX'] = df['x'][11]-df['x'][10]  #for different [i] dx differs at 16th decimal place
+    df.at['dt']=df['Time_multiplier']*np.min(3/2*df['InitneProfile']*df['boltzman']*df['deltaX']**2/\
+                               (df['conductivity']*df['alphas']*df['InitTeProfile']**2.5))
+    df.at['Break_condition'] = 'max_iter' #'max_iter'/'lower_bound'   #Chooses what condition will stop newton iteration 
+    df.at['MaxTime'] = 4e-10
+    df.at['numberOfTimeStep'] = int(df['MaxTime']/df['dt']) #Is replaced by MaxTime
+
     df.at['maxIteration'] = 30
     df.at['convergence'] = 1e-9
     df.at['relaxation'] =1# value in [0-1] Very sensitive!!!
-    df.at['NNeachiter']=False
+    df.at['NNeachiter']=ieachiter
+
 
 
     return df

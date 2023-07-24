@@ -27,17 +27,17 @@ def evolutionField(results, name):
     
     fig = plt.figure(figsize=(12,8))
     ax = fig.add_subplot(projection='3d')
-    ax.set_xlabel(r'$x$ [mm]', fontsize=16,labelpad=15)
+    ax.set_xlabel(r'$x$ [cm]', fontsize=16,labelpad=15)
     ax.set_ylabel(r'$t$ [ns]', fontsize=16,labelpad=15)
     ax.set_zlabel(name, fontsize=16,labelpad=15)
 
 
     ax.tick_params(axis='x',which='both',bottom=True,top=False,labelbottom=True, labelsize=15, size=80)
-    ax.tick_params(axis='x',which='minor',bottom=True,top=False,labelbottom=True, labelsize=15, size=4)
+    ax.tick_params(axis='x',which='minor',bottom=False,top=False,labelbottom=False, labelsize=15, size=4)
     ax.tick_params(axis='y',which='both',left=True,right=False, labelsize=15, size=80)
-    ax.tick_params(axis='y',which='minor',left=True,right=False, labelsize=15, size=4)
+    ax.tick_params(axis='y',which='minor',left=False,right=False, labelsize=15, size=4)
     ax.tick_params(axis='z',which='both',left=True,right=False, labelsize=15, size=80)
-    ax.tick_params(axis='z',which='minor',left=True,right=False, labelsize=15, size=4)
+    ax.tick_params(axis='z',which='minor',left=False,right=False, labelsize=15, size=4)
 
     #ax.zaxis.set_tick_params(which='both',left=True,right=False, labelsize=15, size=200)
     # num_ticks = 7.

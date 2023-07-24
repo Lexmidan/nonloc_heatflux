@@ -291,8 +291,7 @@ def newtonIteration(para, cache):
 
     T = cache['T'];     #let T=T[i,j] then T0=T[i, j-1] 
     #cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/((para['conductivity']*1.31e10/cache['coulog']*para['tau']**(cache['beta']-5/2))*cache['alpha']*T**2.5))
-    cache['dt'] = para['Time_multiplier']*np.min(3/2*para['InitneProfile']*para['boltzman']*para['deltaX']**2/\
-                               (para['conductivity']*para['alphas']*T**2.5))
+    cache['dt'] = para['dt']
     cache['time']+=cache['dt']
     cache['times'] = np.append(cache['times'],cache['time'])
     log = cache['Log']
@@ -314,11 +313,16 @@ def newtonIteration(para, cache):
         gradT=np.gradient(T,x)
         ##Knudsen number accordint (5)
         Kn = -lamb*gradT/T
+
+        cache['kappa_LOCAL'] = para['conductivity']*1.31e10/coulog*para['tau']
+
         scale=para['scaling']
         cache['alpha'], cache['beta'], cache['heatflux'], cache['Kn_nonloc'] = get_data_qless(para['NNmodel'], para['x'], T, gradT, Z, \
                                         ne, Kn, int(para['NNmodel'].fcIn.in_features/4), scale)
                                                                                 #size of the input vector
-
+        dataset, qqratio =qqRatio(cache['heatflux'] ,cache['kappa_LOCAL'], para['x'], T, gradT, Z, \
+                                                                          ne, Kn,  int(para['NNmodel'].fcIn.in_features/4))
+        cache['qqratio']=qqratio.values
 
 
 
