@@ -3,6 +3,7 @@
 - [ ] With change of step in `generate_QimpactTrainingData.py`  the length of input vector for NN also changes. Automate the calculation of used features (thus also the length) in `NN_training.py`, `heatConduction.py` and `NN_training.py`
 - [ ] Scaling of `x` in  `generate_QimpactTrainingData.py` ???
 - [ ] FIX THE PROBLEM WITH MODEL SAVING. The model saved as .pkl gives different results than the model saved in cache. This leads to need of training the NN every run of the script (Unless the script is run in `time-evolv-heatflux.ipynb`).
+- [ ] Check if the NN is not overfitted.
 
 ## Generate the data neseccary for neural network to train
 We used local data that has been generate via `python3 generate_QimpactTrainingData.py 100 0.01 0.2 40000 110`
@@ -26,4 +27,4 @@ All parameters of the problem, such as number of used profiles points, boundary 
 3. Regression using PyTorch Lightning, "Bike Share Regression PyTorch Lightning.ipynb", https://github.com/shotleft/how-to-python.git
 
 # !!!
-The structure of the modules solving the time evolution of temperature distribution (`heatConduction.py`, `postprocessing.py`,  `parameter.py`)  are based on github heatConduction repository published by https://github.com/rickfu415
+The structure of the modules solving the time evolution of temperature profiles (`heatConduction.py`, `postprocessing.py`,  `parameter.py`)  are based on github heatConduction repository published by https://github.com/rickfu415

@@ -4,21 +4,17 @@ import pandas as pd
 from scipy.interpolate import CubicSpline
 import sys
 
-#!!!
-def impdata(filename):
-    path = f'./PyTorch/gd-profiles/{filename}'
-    return path
-#!!!
 
-x_Te, Te = np.loadtxt(impdata('Te_gdhohlraum_cm_10ps_TekeV_interp.txt'), usecols=(0, 1), unpack=True)
-x_ne, ne = np.loadtxt(impdata('ne_gdhohlraum_cm_ne1e20cm3_interp.txt'), usecols=(0, 1), unpack=True)
-x_Zbar, Zbar = np.loadtxt(impdata('Zbar_gdhohlraum_cm_Z_interp.txt'), usecols=(0, 1), unpack=True)
-x_Qimpact, Qimpact = np.loadtxt(impdata('Q_gdhohlraum_microns_10ps_IMPACTWcm2.txt'), usecols=(0, 1), unpack=True)
+
+x_Te, Te = np.loadtxt('./PyTorch/gd-profiles/Te_gdhohlraum_cm_10ps_TekeV_interp.txt', usecols=(0, 1), unpack=True)
+x_ne, ne = np.loadtxt('./PyTorch/gd-profiles/ne_gdhohlraum_cm_ne1e20cm3_interp.txt', usecols=(0, 1), unpack=True)
+x_Zbar, Zbar = np.loadtxt('./PyTorch/gd-profiles/Zbar_gdhohlraum_cm_Z_interp.txt', usecols=(0, 1), unpack=True)
+x_Qimpact, Qimpact = np.loadtxt('./PyTorch/gd-profiles/Q_gdhohlraum_microns_10ps_IMPACTWcm2.txt', usecols=(0, 1), unpack=True)
 # changing units um->cm
 x_Qimpact/=1e4
 
 # In order to include Kn
-x_Qc7bBGK, Qc7bBGK, Knx = np.loadtxt(impdata('Q_gdhohlraum_cm_10ps_c7b-bgk-Wcm2-clogCHIC.txt'),\
+x_Qc7bBGK, Qc7bBGK, Knx = np.loadtxt('./PyTorch/gd-profiles/Q_gdhohlraum_cm_10ps_c7b-bgk-Wcm2-clogCHIC.txt',\
                                      comments='#', delimiter=',', usecols=(0, 8, 6), unpack=True)
 
 

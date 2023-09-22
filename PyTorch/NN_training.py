@@ -30,7 +30,7 @@ def train_model(numEpochs):
 
     Nlayers = [30, 30]
     NNmodelargs=pd.Series([Nfeatures, Nlayers, data_scaling, Nfields], dtype=object)
-    NNmodelargs.to_pickle('./NN/NN_model_args.pkl')
+    NNmodelargs.to_pickle('./NN/NN_model_args.pkl') #just to check if model args are different after saving (Yes they are)
     model = hfm.AlphaBetaModel(*NNmodelargs)
     trainer = pl.Trainer(max_epochs = numEpochs)
     trainer.fit(model, train_loader, validation_loader)

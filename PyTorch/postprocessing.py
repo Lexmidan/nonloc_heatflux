@@ -32,18 +32,6 @@ def evolutionField(results, name):
     ax.set_zlabel(name, fontsize=16,labelpad=15)
 
 
-    ax.tick_params(axis='x',which='both',bottom=True,top=False,labelbottom=True, labelsize=15, size=80)
-    ax.tick_params(axis='x',which='minor',bottom=False,top=False,labelbottom=False, labelsize=15, size=4)
-    ax.tick_params(axis='y',which='both',left=True,right=False, labelsize=15, size=80)
-    ax.tick_params(axis='y',which='minor',left=False,right=False, labelsize=15, size=4)
-    ax.tick_params(axis='z',which='both',left=True,right=False, labelsize=15, size=80)
-    ax.tick_params(axis='z',which='minor',left=False,right=False, labelsize=15, size=4)
-
-    #ax.zaxis.set_tick_params(which='both',left=True,right=False, labelsize=15, size=200)
-    # num_ticks = 7.
-    # ax.set_yticks(np.arange(num_ticks)/(num_ticks-1) * (results.columns[1]-results.columns[0]))
-    # ax.set_xticks(np.arange(num_ticks)/(num_ticks-1) * (results.index[1]-results.index[0]))
-
     ax.grid(visible=None, which='minor', axis='both')
     Z = results.T.values
     ax.plot_surface(X, Y, Z, 
