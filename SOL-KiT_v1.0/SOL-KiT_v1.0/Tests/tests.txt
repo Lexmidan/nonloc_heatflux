@@ -1,1 +1,0 @@
-This folder contains tests based on various benchmarking runs presented in the manuscript. To run them, check corresponding info.txt, and copy INPUT folder into directory with your SOL-KiT executable.

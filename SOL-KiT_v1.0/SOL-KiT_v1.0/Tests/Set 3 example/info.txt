@@ -1,1 +1,0 @@
-Test based on highest resolution run from Set 3. Input and relevant output provided. Should be run on a single processor. The relevant output file is SHEATH_DATA_00001.txt, where the fist entry is the computed sheath heat transmission coefficient, and the second is the sheath potential drop. Analytical values for these two quantities are 4.83877495 and 2.83877495, respectively.
