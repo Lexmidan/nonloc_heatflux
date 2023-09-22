@@ -4,4 +4,4 @@ This folder contains the key files for solving the non-local transport problem. 
 Contains the bachelor thesis assignment. In `refs` folder you will find the references for the BT
 # tensorflow
 Templates and examples of PyTorch Lightning implementations
-# SERIOUS NUMERICS FOR SERIOUS PHYSICS!
+
